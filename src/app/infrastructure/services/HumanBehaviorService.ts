@@ -11,7 +11,6 @@ export class HumanBehaviorService {
   private lastResetDate: Date = new Date();
   private lastActionTime: number = 0;
 
-  private resetDate: Date = new Date();
   private nextResetTimeStamp: number = 0;
   
 

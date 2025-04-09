@@ -22,6 +22,7 @@ export interface Intervention {
     actions: Action[];
     leadCriteria: LeadCriteria;
     id?: string;
+    campaignId?: string;
     progress: number;
     status: InterventionStatus;
     autoStart: boolean;
