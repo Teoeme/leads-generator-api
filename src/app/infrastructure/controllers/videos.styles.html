@@ -1,0 +1,30 @@
+<style>
+    .video-lightbox.active {
+        background: transparent;
+    }
+
+    .video-lightbox-content {
+        background: transparent;
+    }
+
+    .lightbox-image {
+        width: 100%;
+    }
+
+</style>
+
+<script>   
+    jetPopupClose=document.querySelector('.jet-popup__close-button');
+
+        videoItems=document.querySelectorAll('.video-item , .image-item');
+        videoItems.forEach(videoItem=>{
+            videoItem.addEventListener('click',()=>{
+                jetPopupClose.style.display='none';
+            })
+        })
+
+        videoLightboxClose=document.querySelector('.video-lightbox-close');
+        videoLightboxClose.addEventListener('click',()=>{
+            jetPopupClose.style.display='block';
+        })
+</script>

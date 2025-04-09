@@ -1,0 +1,61 @@
+{
+  "name": "social-media-scraper",
+  "version": "1.0.0",
+  "description": "API para scraping de redes sociales y generación de leads",
+  "main": "dist/app/index.js",
+  "scripts": {
+    "start": "node dist/app/index.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/app/index.ts",
+    "build": "tsc",
+    "test": "jest"
+  },
+  "keywords": [
+    "social-media",
+    "scraping",
+    "leads",
+    "instagram",
+    "facebook",
+    "linkedin"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.0",
+    "autoprefixer": "^10.4.16",
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "instagram-id-to-url-segment": "^0.0.0",
+    "instagram-private-api": "^1.45.3",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.3",
+    "morgan": "^1.10.0",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "passport-local": "^1.0.0",
+    "playwright": "^1.50.1",
+    "playwright-extra": "^4.3.6",
+    "postcss": "^8.4.31",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "random-useragent": "^0.5.0",
+    "tailwindcss": "^3.4.1"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/morgan": "^1.9.9",
+    "@types/node": "^20.10.5",
+    "@types/passport": "^1.0.16",
+    "@types/passport-jwt": "^3.0.13",
+    "@types/passport-local": "^1.0.38",
+    "@types/random-useragent": "^0.3.3",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.3.3"
+  }
+}

@@ -1,0 +1,369 @@
+<script>
+
+function search_element(element,tag){
+   
+   for(let child of element.childNodes){
+      if(child?.childNodes?.length>0){
+         return search_element(child,tag);
+      }
+      if(child.tagName==tag){
+         return child;
+      }
+   }
+   return null;      
+}
+
+let home_button;
+let projects_button;
+let contact_button;
+let about_me_button;
+let contact_button_secondary;
+
+let home_container;
+let projects_container;
+let contact_container;
+let about_me_container;
+let home_video;
+let video;
+
+document.addEventListener('click',(e)=>{
+if(video){
+   video.muted=false
+}
+})
+
+document.addEventListener('DOMContentLoaded',()=>{
+   home_container=document.getElementById('home_container');
+   projects_container=document.getElementById('projects_container');
+   contact_container=document.getElementById('contact_container');
+   about_me_container=document.getElementById('about_me_container');
+   main_container=document.getElementById('main_container_menu');
+   home_button=document.getElementById('home_button_menu');
+   projects_button=document.getElementById('projects_button');
+   contact_button=document.getElementById('contact_button');
+
+
+home_container.style.display='flex';
+projects_container.style.display='none';
+contact_container.style.display='none';
+about_me_container.style.display='none';
+
+home_video=document.getElementById('home_video');
+video=search_element(home_video,'VIDEO');
+
+projects_button.addEventListener('click',()=>{
+
+  //projects show
+  projects_container.style.display='flex';
+  home_container.style.display='none';
+  contact_container.style.display='none';
+  about_me_container.style.display='none';
+  video.pause();
+  turn_menu_small();
+  
+  about_me_button=document.getElementById('about_me_button');
+  contact_button_secondary=document.getElementById('contact_button_secondary');
+   about_me_button.addEventListener('click',()=>{
+   home_container.style.display='none';
+   projects_container.style.display='none';
+   contact_container.style.display='none';
+   about_me_container.style.display='flex';
+   video.pause();
+   turn_menu_small();
+})
+
+contact_button_secondary?.addEventListener('click',()=>{
+   home_container.style.display='none';
+   projects_container.style.display='none';
+   contact_container.style.display='flex';
+   about_me_container.style.display='none';
+   video.pause();
+   turn_menu_small();
+})
+
+
+})
+
+contact_button.addEventListener('click',()=>{
+   home_container.style.display='none';
+   projects_container.style.display='none';
+   contact_container.style.display='flex';
+   about_me_container.style.display='none';
+   video.pause();
+   turn_menu_small();
+})
+
+
+
+home_button.addEventListener('click',()=>{
+   home_container.style.display='flex';
+   projects_container.style.display='none';
+   contact_container.style.display='none';
+   about_me_container.style.display='none';
+   if(video){
+      video.play();
+      video.muted=false;
+   }
+
+   show_top_logo();
+   turn_menu_big();
+   must_show_top_logo=true;
+})
+})
+
+
+
+</script>
+
+<script>
+let menu_container;
+let menu_video_background;
+let title_text;
+let year_text;
+let left_menu;
+let right_menu;
+let subtitle_text
+let buttons_menu_container;
+let title_text_container;
+let logo_menu_container
+
+//#A4A4A4
+
+function show_logo_menu_container(){
+  logo_menu_container.style.display='flex';
+      // Preparar logo antes de hacerlo visible
+
+      logo_menu_container.style.transition = `opacity 0.3s ease-out`;
+        logo_menu_container.style.display = 'flex';
+        logo_menu_container.style.opacity = '0';
+        logo_menu_container.style.transform = 'translateY(-45%)'; 
+
+        setTimeout(() => {
+          logo_menu_container.style.opacity = '1';
+        }, 100);
+
+}
+
+function hide_logo_menu_container(){
+  logo_menu_container.style.display='none';
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+   menu_container=document.getElementById('menu_container');
+   top_logo_container=document.getElementById('top_logo_container');
+   title_text_container=document.getElementById('title_text');
+   year_text=document.getElementById('year_text');
+   left_menu=document.getElementById('left_menu');
+   right_menu=document.getElementById('right_menu');
+   subtitle_text=document.getElementById('subtitle_text');
+   buttons_menu_container=document.getElementById('buttons_menu_container');
+   logo_menu_container=document.getElementById('logo_menu_container');
+   menu_container.childNodes.forEach(child=>{
+      if(child?.classList?.contains('elementor-background-video-container')){
+         menu_video_background=child;
+      }
+   });
+   title_text_container.childNodes.forEach(child=>{
+      if(child?.classList?.contains('elementor-heading-title')){
+         title_text=child;
+      }else{
+         child?.childNodes?.forEach(child=>{
+            if(child?.tagName==='H2'){
+               title_text=child;
+            }
+         });
+      }
+   });
+
+   logo_menu_container.style.display='none';
+})
+
+function turn_menu_small(){
+  const transitionBase = '0.6s cubic-bezier(0.25, 0.1, 0.25, 1)';
+  const transitionBaseFaster='0.3s cubic-bezier(0.25, 0.1, 0.25, 1)';
+  
+  title_text.style.transition = `font-size ${transitionBase}, color ${transitionBase}, transform ${transitionBase}`;
+  year_text.style.transition = `opacity ${transitionBase}`;
+  subtitle_text.style.transition = `opacity ${transitionBaseFaster}`;
+  menu_container.style.transition = `all ${transitionBase}`;
+  menu_video_background.style.transition = `opacity ${transitionBase}`;
+  buttons_menu_container.style.transition = `all ${transitionBase}`;
+  
+  if (left_menu) {
+    Array.from(left_menu.children).forEach(child => {
+      child.style.transition = `transform ${transitionBase}`;
+    });
+  }
+  
+  if (right_menu) {
+    Array.from(right_menu.children).forEach(child => {
+      child.style.transition = `transform ${transitionBase}`;
+    });
+  }
+  
+  requestAnimationFrame(() => {
+    // Fase 1: Cambiar fondo y comenzar a ocultar elementos
+    menu_video_background.style.opacity = '0';
+    year_text.style.opacity = '0';
+    
+    // Cambiar el fondo gradualmente
+    menu_container.style.backgroundColor = '#E0E0E0';
+    menu_container.style.backgroundImage = 'none';
+    
+    // Esperar un poco y continuar con la secuencia
+    setTimeout(() => {
+      // Fase 2: Mover el título y elementos del menú
+      title_text.style.fontSize = '45px';
+      title_text.style.color = 'white';
+      title_text.style.transform = 'translateY(-10px)'; // Movimiento más sutil
+      
+      subtitle_text.style.opacity = '0';
+      
+      // Mover elementos del menú con un efecto en cascada (staggered)
+      if (left_menu && left_menu.children.length > 0) {
+        // Primer hijo se mueve primero
+        left_menu.children[0].style.transform = 'translateY(-85%)';
+        
+        // Mover el segundo hijo con un pequeño retraso
+        if (left_menu.children.length > 1) {
+          setTimeout(() => {
+            left_menu.children[1].style.transform = 'translateY(-65%)';
+          }, 300);
+        }
+      }
+      
+      if (right_menu && right_menu.children.length > 0) {
+        // Mover primer hijo
+        right_menu.children[0].style.transform = 'translateY(-100%)';
+        
+        // Mover los demás hijos con retrasos escalonados
+        if (right_menu.children.length > 1) {
+          setTimeout(() => {
+            right_menu.children[1].style.transform = 'translateY(-100%)';
+          }, 150);
+          
+          if (right_menu.children.length > 2) {
+            setTimeout(() => {
+              right_menu.children[2].style.transform = 'translateY(-100%)';
+            }, 200);
+          }
+        }
+      }
+      
+      // Fase 3: Reducir tamaño del contenedor y finalizar
+      setTimeout(() => {
+    
+        
+        // Reducir el contenedor con transición suave
+        menu_container.style.maxHeight = '90px';
+        menu_container.style.minHeight = '0px';
+        menu_container.style.margin = '0px';
+        menu_container.style.padding = '20px 0px';
+        
+        // Mostrar logo gradualmente después de que el contenedor cambió tamaño
+          
+          setTimeout(() => {
+            subtitle_text.style.visibility = 'hidden';
+            menu_video_background.style.display = 'none';
+          }, 500);
+      }, 300);
+    }, 150);
+  });
+
+  menu_height=77
+}
+
+function turn_menu_big(){
+  // Transición más suave con bezier
+  const transitionBase = '0.6s cubic-bezier(0.25, 0.1, 0.25, 1)';
+  
+  // Configurar todas las transiciones
+  title_text.style.transition = `font-size ${transitionBase}, color ${transitionBase}, transform ${transitionBase}`;
+  year_text.style.transition = `opacity ${transitionBase}`;
+  subtitle_text.style.transition = `opacity ${transitionBase}`;
+  menu_container.style.transition = `all ${transitionBase}`;
+  menu_video_background.style.transition = `opacity ${transitionBase}`;
+  logo_menu_container.style.transition = `opacity ${transitionBase}`;
+  buttons_menu_container.style.transition = `all ${transitionBase}`;
+  
+  // Configurar transiciones para elementos del menú
+  if (left_menu) {
+    Array.from(left_menu.children).forEach(child => {
+      child.style.transition = `transform ${transitionBase}`;
+    });
+  }
+  
+  if (right_menu) {
+    Array.from(right_menu.children).forEach(child => {
+      child.style.transition = `transform ${transitionBase}`;
+    });
+  }
+  
+  // Usar requestAnimationFrame para suavizar la animación
+  requestAnimationFrame(() => {
+    // Fase 1: Iniciar cambio de contenedor y ocultar logo
+    logo_menu_container.style.opacity = '0';
+    
+    // Preparar video background
+    menu_video_background.style.display = 'flex';
+    
+    // Cambiar gradualmente el contenedor
+    menu_container.style.backgroundColor = 'transparent';
+    menu_container.style.maxHeight = 'none';
+    menu_container.style.minHeight = '200px';
+    menu_container.style.padding = '40px 30px 50px 30px';
+    
+    // Fase 2: Restaurar elementos con efecto en cascada
+    setTimeout(() => {
+      // Hacer visible el video de fondo
+      menu_video_background.style.opacity = 1;
+      
+      // Restaurar el título gradualmente
+      title_text.style.fontSize = '55px';
+      title_text.style.color = 'black';
+      title_text.style.transform = 'translateY(0)';
+      
+      // Restaurar posición de los botones
+      buttons_menu_container.style.position = 'relative';
+      buttons_menu_container.style.transform = 'none';
+      
+      // Mover elementos del menú con efecto en cascada
+      if (left_menu) {
+        Array.from(left_menu.children).forEach((child, index) => {
+          setTimeout(() => {
+            child.style.transform = 'translateY(0)';
+          }, index * 80); // Espaciado entre cada elemento
+        });
+      }
+      
+      if (right_menu) {
+        Array.from(right_menu.children).forEach((child, index) => {
+          setTimeout(() => {
+            child.style.transform = 'translateY(0)';
+          }, index * 80); // Espaciado entre cada elemento
+        });
+      }
+      
+      // Preparar año y subtítulo
+      year_text.style.display = 'flex';
+      year_text.style.opacity = '0';
+      subtitle_text.style.visibility = 'visible';
+      subtitle_text.style.opacity = '0';
+      
+      // Fase 3: Mostrar año y subtítulo gradualmente
+      setTimeout(() => {
+        year_text.style.opacity = '1';
+        subtitle_text.style.opacity = '1';
+        
+        // Ocultar logo completamente al final
+        setTimeout(() => {
+          logo_menu_container.style.display = 'none';
+        }, 400);
+      }, 250);
+    }, 200);
+  });
+  menu_height=213
+}
+
+</script>
+

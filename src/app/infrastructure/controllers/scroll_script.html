@@ -1,0 +1,121 @@
+<script>
+  let scrollY_previous = 0;
+  let isMenuVisible = true;
+  let isTopLogoVisible = true;
+  let must_show_top_logo = true;
+  let main_container_padding_top = `353px`;
+  let top_logo_height = 140;
+  let menu_height = 200;
+  const SCROLL_THRESHOLD = 5; // Umbral de sensibilidad
+  let scroll_timeout;
+
+function refresh_main_container_padding_top(){
+  main_container_padding_top = `${menu_height + top_logo_height}px`;
+  main_container.style.transition = 'all 0.3s ease-out';
+  main_container.style.paddingTop = main_container_padding_top;
+}
+
+  function hide_top_logo() {
+    top_logo_container.style.transition = 'all 0.5s ease-out';
+    top_logo_container.style.transform = 'translateY(-300%)';
+    top_logo_height=0;
+    isTopLogoVisible = false;
+    // menu_container.style.top = '13px';
+    top_logo_container.style.maxHeight = '0px';
+    top_logo_container.style.minHeight = '0px';
+    top_logo_container.style.overflow = 'hidden';
+    top_logo_container.style.padding = '0px';
+
+    show_logo_menu_container();
+  }
+
+  function show_top_logo() {
+    isTopLogoVisible = true;
+    top_logo_container.style.transition = 'all 0.3s ease-out';
+    top_logo_container.style.transform = 'translateY(0%)';
+    top_logo_height=140;
+    menu_container.style.top = '0px';
+    top_logo_container.style.maxHeight = '140px';
+    top_logo_container.style.minHeight = '140px';
+    top_logo_container.style.overflow = 'visible';
+    top_logo_container.style.padding = '0px 25px';
+  }
+
+  function hide_menu() {
+    if (!isMenuVisible) return;
+
+    menu_container.style.transition = `
+      all 0.5s ease-out,
+    `;
+    
+    menu_container.style.transform = 'translateY(-300%)';
+    menu_height=0;
+    isMenuVisible = false;
+  }
+
+  function show_menu() {
+    menu_container.style.transition = `
+      all 0.5s ease-in,
+    `;
+    
+    menu_container.style.transform = 'translateY(0%)';
+
+    // handle_topLogo_and_menu_top();
+    menu_height= menu_container.offsetHeight -13 || 200;
+    isMenuVisible = true;
+  }
+
+
+  function handle_topLogo_and_menu_top(){
+    if(window.scrollY > 0){
+      //No se encuentre en la parte superior de la pagina deberia estar pegado al top
+      if(isTopLogoVisible){
+        // top_logo_container.style.borderTop='13px solid #61ABEB'; 
+        menu_container.style.top = top_logo_container.offsetHeight + 'px';
+      }else{
+        menu_container.style.top = '0px';
+      }
+    }else{
+      //Se encuentra en la parte superior de la pagina deberia estar pegado al top
+      if(isTopLogoVisible){
+        // top_logo_container.style.borderTop='13px solid #61ABEB'; 
+        menu_container.style.top = top_logo_container.offsetHeight + 'px';
+      }else{
+        // menu_container.style.top = '13px';
+      }
+    }
+  }
+
+  // Usar requestAnimationFrame para optimizar el rendimiento
+  let ticking = false;
+
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        const currentScroll = window.scrollY;
+        const scrollDelta = currentScroll - scrollY_previous;
+
+        // Detectar dirección del scroll
+        if (scrollDelta > SCROLL_THRESHOLD) {
+          clearTimeout(scroll_timeout);
+          // Scrolling hacia abajo
+          hide_menu();
+          hide_top_logo();
+          
+          scroll_timeout=setTimeout(()=>{
+            show_menu();
+          },200);
+        } else if (scrollDelta < -SCROLL_THRESHOLD) {
+          // Scrolling hacia arriba
+        }
+
+        scrollY_previous = currentScroll;
+        ticking = false;
+    });
+    
+    ticking = true;
+    // handle_topLogo_and_menu_top();
+    }
+  });
+  
+  </script>
