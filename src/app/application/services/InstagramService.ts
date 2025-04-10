@@ -6,14 +6,15 @@ import { HumanBehaviorService } from '../../infrastructure/services/HumanBehavio
 import { SocialMediaService } from './SocialMediaService';
 import { Page } from 'playwright';
 import { ActionType } from '../../infrastructure/simulation/actions/ActionTypes';
+import { ProxyConfiguration, ProxyStatus } from '../../domain/entities/Proxy/ProxyConfiguration';
 
 export class InstagramService extends SocialMediaService {
   private ig: IgApiClient;
   private _loggedIn: boolean = false;
   private humanBehavior: HumanBehaviorService;
 
-  constructor(account: SocialMediaAccount) {
-    super(account);
+  constructor(account: SocialMediaAccount,proxy: ProxyConfiguration | null) {
+    super(account,proxy);
     if (account.type !== SocialMediaType.INSTAGRAM) {
       throw new Error('Invalid account type for Instagram service');
     }
@@ -39,6 +40,26 @@ export class InstagramService extends SocialMediaService {
       // Configurar el dispositivo antes de cualquier operación - CRUCIAL para el login directo
       this.ig.state.generateDevice(this.getAccount().username);
       console.log('Device ID generated:', this.ig.state.deviceId);
+      
+      // Configurar proxy si está disponible
+      const proxyConfig = this.getProxy();
+      if (proxyConfig && proxyConfig.status === ProxyStatus.ACTIVE) {
+        console.log(`Configurando proxy para API: ${proxyConfig.server}`);
+        
+        let proxyUrl = '';
+        const protocol = proxyConfig.protocol || 'http';
+        
+        // Formato: protocol://username:password@server
+        if (proxyConfig.username && proxyConfig.password) {
+          proxyUrl = `${protocol}://${proxyConfig.username}:${proxyConfig.password}@${proxyConfig.server}`;
+        } else {
+          proxyUrl = `${protocol}://${proxyConfig.server}`;
+        }
+        
+        // Establecer proxy en la instancia de IgApiClient
+        this.ig.state.proxyUrl = proxyUrl;
+        console.log('Proxy configurado para API de Instagram');
+      }
       
       // Usar datos de sesión guardados si existen
       if (this.getAccount().sessionData) {
@@ -85,8 +106,8 @@ export class InstagramService extends SocialMediaService {
           console.log('Navigating to Instagram login page...');
           
           // Ir directamente a la página de login de Instagram
-          await page.goto('https://www.instagram.com/accounts/login/', { 
-            waitUntil: 'domcontentloaded',
+          await page.goto('https://www.instagram.com/', { 
+            // waitUntil: 'domcontentloaded',
             timeout: 60000 
           });
           
@@ -279,6 +300,18 @@ export class InstagramService extends SocialMediaService {
     const comments = await commentsFeed.items();
     return comments.slice(0, limit).map(this.mapToComment);
   }
+
+async goToHome(page:Page): Promise<void>{
+ if(!page) return;
+ if(page.url() === 'https://www.instagram.com/'){
+  return;
+ }
+ 
+  await page.goto('https://www.instagram.com/', { 
+    // waitUntil: 'domcontentloaded',
+    timeout: 60000 
+  });
+}
 
   /**
    * Obtiene los usuarios que dieron like a un post

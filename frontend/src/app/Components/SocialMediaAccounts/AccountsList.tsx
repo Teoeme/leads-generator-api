@@ -26,7 +26,7 @@ const AccountsList = () => {
     {
         key:'type',
         label:'Type',
-        render: (account:Account)=> <span>{AccountsTypeList[account.type].label}</span>
+        render: (account:Account)=> <span>{AccountsTypeList[account.type as keyof typeof AccountsTypeList].label}</span>
     },
     {
         key:'actions',
@@ -65,6 +65,7 @@ switch(columnKey){
         type:account.type,
         username:account.username,
         password:account?.password,
+        proxy:account?.proxy,
         id:account.id
   })
   }
@@ -80,7 +81,7 @@ switch(columnKey){
         </TableHeader>
         <TableBody items={accounts ?? []}>
             {(account)=> <TableRow>
-                {(columnKey)=> <TableCell>{renderCell(account,columnKey as string)}</TableCell>}
+                {(columnKey)=> <TableCell>{renderCell(account,columnKey as string) as React.ReactNode}</TableCell>}
 
                 </TableRow>}
 

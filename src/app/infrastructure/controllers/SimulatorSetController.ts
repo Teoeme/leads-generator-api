@@ -8,14 +8,16 @@ import { SimulatorSet } from "../../domain/services/SimulatorSet";
 import { MongoSocialMediaAccountRepository } from "../repositories/mongodb/MongoSocialMediaAccountRepository";
 import { GeminiApiService } from "../services/GeminiService";
 import { BehaviorProfileType } from "../simulation/behaviors/BehaviorProfile";
+import { MongoProxyRepository } from "../repositories/mongodb/MongoProxyRepository";
 
 export class SimulatorSetController {
     private static instance: SimulatorSetController;
     private simulatorSet: SimulatorSet;
     private accountRepository: MongoSocialMediaAccountRepository;
-
+    private proxyRepository: MongoProxyRepository;
     private constructor() {
         this.accountRepository = new MongoSocialMediaAccountRepository();
+        this.proxyRepository = new MongoProxyRepository();
         this.simulatorSet = SimulatorSet.getInstance();
     }
 
@@ -43,12 +45,13 @@ export class SimulatorSetController {
             const {accountId,profileType}=req.body;
             console.log(accountId,profileType,'accountId and profileType');
         const account = await this.accountRepository.findById(accountId);
+        const proxy = await this.proxyRepository.getProxyById(account?.proxy?.proxyId || '');
         if(!account) throw new Error("Account not found");
 
         let socialMediaService: SocialMediaService;
         switch(account.type){
           case SocialMediaType.INSTAGRAM:
-            socialMediaService = new InstagramService(account);
+            socialMediaService = new InstagramService(account,proxy ?? null);
             break;
           default:
             throw new Error('Invalid account type');

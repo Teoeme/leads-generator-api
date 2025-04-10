@@ -1,16 +1,13 @@
 import { CampainStatus, Intervention, InterventionStatus } from "../../domain/entities/Campain";
 import { Lead } from "../../domain/entities/Lead";
-import { SocialMediaType } from "../../domain/entities/SocialMediaAccount";
+import { SocialMediaType, SocialMediaAccountRole } from "../../domain/entities/SocialMediaAccount";
 import { CampainRepository } from "../../domain/repositories/CampainRepository";
 import { SimulatorSet } from "../../domain/services/SimulatorSet";
 import { MongoCampainRepository } from "../../infrastructure/repositories/mongodb/MongoCampainRepository";
 import { logger, LogContext } from "../../infrastructure/services/LoggerService";
 import { SimulationService } from "./SimulationService";
+import { ActionType } from "../../infrastructure/simulation/actions/ActionTypes";
 
-// Tipo para consultas MongoDB
-interface DateQuery {
-    $lte: Date;
-}
 
 // Ampliar el tipado de Intervention para incluir importanceFactor opcional
 declare module "../../domain/entities/Campain" {
@@ -389,9 +386,12 @@ export class Orchetrator {
                 // Marcar como bloqueada para evitar procesamiento duplicado
                 queueItem.intervention.isBlocked = true;
                 
-                // Obtener un simulador disponible del tipo adecuado
+                // Determinar el rol requerido según el tipo de acciones en la intervención
+                const requiredRole = this.determineRequiredRole(queueItem.intervention);
+                
+                // Obtener un simulador disponible del tipo adecuado y con el rol requerido
                 const socialMedia = queueItem.socialMediaType;
-                const simulator = this.simulatorSet.getAvailableSimulator(socialMedia);
+                const simulator = this.simulatorSet.getAvailableSimulator(socialMedia, requiredRole);
                 
                 if (!simulator) {
                     // No hay simuladores disponibles
@@ -401,23 +401,24 @@ export class Orchetrator {
                     // Registrar el error para seguimiento
                     queueItem.error = {
                         type: OrchestratorErrorType.SIMULATOR_NOT_FOUND,
-                        message: `No simulator available for ${socialMedia}`,
+                        message: `No simulator available for ${socialMedia} with role ${requiredRole || 'any'}`,
                         timestamp: new Date()
                     };
                     
                     const logContext: LogContext = {
                         interventionId: queueItem.intervention.id,
                         campaignId: queueItem.intervention.campaignId,
-                        socialMediaType: socialMedia
+                        socialMediaType: socialMedia,
+                        role: requiredRole
                     };
                     
-                    logger.warn(`No simulator available for ${socialMedia}`, {
+                    logger.warn(`No simulator available for ${socialMedia} with role ${requiredRole || 'any'}`, {
                         ...logContext,
                         event: 'SIMULATOR_NOT_FOUND'
                     });
                     
                     this.interventionQueue.set(queueItem.intervention.id!, queueItem);
-                    console.log(`Simulator not found for ${socialMedia}. 😔 Leaving the intervention in pending state`);
+                    console.log(`Simulator not found for ${socialMedia} with role ${requiredRole || 'any'}. 😔 Leaving the intervention in pending state`);
                     continue;
                 }
 
@@ -443,7 +444,8 @@ export class Orchetrator {
                     campaignId: queueItem.intervention.campaignId,
                     simulatorId: simulator.socialMediaAccount.id,
                     socialMediaType: socialMedia,
-                    priority: queueItem.priority
+                    priority: queueItem.priority,
+                    role: requiredRole
                 };
                 
                 // Registrar el inicio de la intervención
@@ -591,6 +593,7 @@ export class Orchetrator {
             
             // Almacenar los leads en la base de datos
             // TODO: Implementar almacenamiento de leads
+            
             
             // Registrar finalización exitosa
             logger.logInterventionComplete(
@@ -777,6 +780,65 @@ export class Orchetrator {
     
     getDetailedQueueStatus(): Map<string, QueueItem> {
         return new Map(this.interventionQueue);
+    }
+
+    private determineRequiredRole(intervention: Intervention): SocialMediaAccountRole | undefined {
+        // Analizar las acciones en la intervención para determinar el rol necesario
+        if (!intervention.actions || intervention.actions.length === 0) {
+            return undefined;
+        }
+        
+        // Acciones que requieren rol de ENGAGEMENT
+        const engagementActions = [
+            ActionType.LIKE_POST,
+            ActionType.COMMENT_ON_POST,
+            ActionType.FOLLOW_USER,
+            ActionType.UNFOLLOW_USER,
+            ActionType.VIEW_WITH_ENGAGEMENT
+        ];
+        
+        // Acciones que requieren rol de MESSAGING
+        const messagingActions = [
+            ActionType.SEND_MESSAGE
+        ];
+        
+        // Acciones que requieren rol de SCRAPPING
+        const scrappingActions = [
+            ActionType.VISIT_PROFILE,
+            ActionType.VIEW_POST,
+            ActionType.VIEW_LIKES,
+            ActionType.VIEW_COMMENTS,
+            ActionType.SEARCH_HASHTAG
+        ];
+        
+        // Contadores para cada tipo de acción
+        let engagementCount = 0;
+        let messagingCount = 0;
+        let scrappingCount = 0;
+        
+        // Analizar cada acción en la intervención
+        for (const action of intervention.actions) {
+            if (engagementActions.includes(action.action)) {
+                engagementCount++;
+            } else if (messagingActions.includes(action.action)) {
+                messagingCount++;
+            } else if (scrappingActions.includes(action.action)) {
+                scrappingCount++;
+            }
+        }
+        
+        // Determinar el rol predominante
+        if (messagingCount > 0) {
+            // Si hay acciones de mensajería, se requiere ese rol específicamente
+            return SocialMediaAccountRole.MESSAGING;
+        } else if (engagementCount > scrappingCount) {
+            return SocialMediaAccountRole.ENGAGEMENT;
+        } else if (scrappingCount > 0) {
+            return SocialMediaAccountRole.SCRAPPING;
+        }
+        
+        // Si no se puede determinar, retornar undefined
+        return undefined;
     }
 }
 

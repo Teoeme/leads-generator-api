@@ -14,6 +14,9 @@ const {open}=useModal({uid:'logs-modal',title:'Logs'})
     <div className='flex justify-between items-center p-2'>
       <ThemeSwitcher />
       <div className='flex items-center gap-2'>
+        <Button variant='flat' color='primary' size='sm'>
+          <Link href="/proxies">Proxies</Link>
+        </Button>
         <Button variant='flat' color='warning' size='sm' onPress={()=>{
           open({title:'Logs',type:'view'})
         }}>

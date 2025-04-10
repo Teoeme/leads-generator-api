@@ -3,12 +3,104 @@
  */
 
 export enum BehaviorProfileType {
-  CASUAL = 'casual',
+  CASUAL = 'CASUAL',
   DETAILED = 'detailed',
   SOCIAL = 'social',
-  PROFESSIONAL = 'professional',
-  RESEARCHER = 'researcher'
+  PROFESSIONAL = 'PROFESSIONAL',
+  RESEARCHER = 'researcher',
+  INFLUENCER = 'INFLUENCER',
+  ENTHUSIAST = 'ENTHUSIAST'
 }
+
+// Interfaz para definir los límites por tipo de red social
+export interface SocialMediaLimits {
+  dailyActions: number;         // Número máximo de acciones por día
+  hourlyActions: number;        // Número máximo de acciones por hora
+  likesPerDay: number;          // Número máximo de "me gusta" por día
+  commentsPerDay: number;       // Número máximo de comentarios por día
+  followsPerDay: number;        // Número máximo de seguimientos por día
+  unfollowsPerDay: number;      // Número máximo de dejar de seguir por día
+  directMessagesPerDay: number; // Número máximo de mensajes directos por día
+  actionsInterval: {            // Intervalo entre acciones consecutivas (ms)
+    min: number;
+    max: number;
+  };
+  coolingPeriod: number;        // Período de enfriamiento después de alcanzar límites (horas)
+}
+
+// Límites predeterminados por tipo de red social
+export const socialMediaLimits: {[key: string]: SocialMediaLimits} = {
+  INSTAGRAM: {
+    dailyActions: 500,
+    hourlyActions: 60,
+    likesPerDay: 200,
+    commentsPerDay: 50,
+    followsPerDay: 150,
+    unfollowsPerDay: 150,
+    directMessagesPerDay: 50,
+    actionsInterval: {
+      min: 5000,  // 5 segundos
+      max: 30000  // 30 segundos
+    },
+    coolingPeriod: 3 // 3 horas
+  },
+  LINKEDIN: {
+    dailyActions: 250,
+    hourlyActions: 30,
+    likesPerDay: 100,
+    commentsPerDay: 30,
+    followsPerDay: 50,
+    unfollowsPerDay: 50,
+    directMessagesPerDay: 40,
+    actionsInterval: {
+      min: 15000,  // 15 segundos
+      max: 60000   // 1 minuto
+    },
+    coolingPeriod: 4 // 4 horas
+  },
+  FACEBOOK: {
+    dailyActions: 400,
+    hourlyActions: 50,
+    likesPerDay: 150,
+    commentsPerDay: 40,
+    followsPerDay: 100,
+    unfollowsPerDay: 100,
+    directMessagesPerDay: 50,
+    actionsInterval: {
+      min: 10000,  // 10 segundos
+      max: 45000   // 45 segundos
+    },
+    coolingPeriod: 3 // 3 horas
+  },
+  TWITTER: {
+    dailyActions: 600,
+    hourlyActions: 70,
+    likesPerDay: 300,
+    commentsPerDay: 100,
+    followsPerDay: 200,
+    unfollowsPerDay: 200,
+    directMessagesPerDay: 50,
+    actionsInterval: {
+      min: 5000,   // 5 segundos
+      max: 25000   // 25 segundos
+    },
+    coolingPeriod: 2 // 2 horas
+  },
+  TIKTOK: {
+    dailyActions: 350,
+    hourlyActions: 40,
+    likesPerDay: 200,
+    commentsPerDay: 50,
+    followsPerDay: 100,
+    unfollowsPerDay: 100,
+    directMessagesPerDay: 30,
+    actionsInterval: {
+      min: 7000,   // 7 segundos
+      max: 35000   // 35 segundos
+    },
+    coolingPeriod: 3 // 3 horas
+  }
+};
 
 export interface BehaviorProfile {
   // Velocidad de escritura (caracteres por minuto)
@@ -103,5 +195,27 @@ export const behaviorProfiles: Record<BehaviorProfileType, BehaviorProfile> = {
     contentViewDuration: { min: 20000, max: 60000 },
     interactionProbability: 0.1,
     maxSessionDuration: 120 * 60 * 1000 // 2 horas
+  },
+  
+  [BehaviorProfileType.INFLUENCER]: {
+    typingSpeed: { min: 220, max: 380 },
+    errorRate: 0.04,
+    scrollSpeed: { min: 350, max: 900 },
+    breakDuration: { min: 25000, max: 100000 }, // 25 segundos a 1.7 minutos
+    breakFrequency: 12,
+    contentViewDuration: { min: 4000, max: 18000 },
+    interactionProbability: 0.7,
+    maxSessionDuration: 60 * 60 * 1000 // 1 hora
+  },
+  
+  [BehaviorProfileType.ENTHUSIAST]: {
+    typingSpeed: { min: 190, max: 320 },
+    errorRate: 0.06,
+    scrollSpeed: { min: 320, max: 850 },
+    breakDuration: { min: 35000, max: 130000 }, // 35 segundos a 2.2 minutos
+    breakFrequency: 18,
+    contentViewDuration: { min: 6000, max: 25000 },
+    interactionProbability: 0.5,
+    maxSessionDuration: 40 * 60 * 1000 // 40 minutos
   }
 }; 

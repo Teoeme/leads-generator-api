@@ -1,7 +1,8 @@
-import { SocialMediaAccount } from '../../domain/entities/SocialMediaAccount';
+import { ProxyAssignment, SocialMediaAccount } from '../../domain/entities/SocialMediaAccount';
 import { Lead } from '../../domain/entities/Lead';
 import { Post } from '../../domain/services/SocialMediaService';
 import { Page } from 'playwright';
+import { ProxyConfiguration } from '../../domain/entities/Proxy/ProxyConfiguration';
 
 export interface UserProfile {
   id: string;
@@ -28,13 +29,20 @@ export interface Comment {
 export abstract class SocialMediaService {
   abstract loggedIn: boolean;
   private _account: SocialMediaAccount;
+  private _proxy: ProxyConfiguration | null;
 
-  constructor(account: SocialMediaAccount) {
+  constructor(account: SocialMediaAccount,proxy: ProxyConfiguration | null) {
     this._account = account;
+    this._proxy = proxy;
   }
 
   public getAccount(): SocialMediaAccount {
     return this._account;
+  }
+
+
+  public getProxy(): ProxyConfiguration | null {
+    return this._proxy;
   }
 
   abstract login(): Promise<boolean>;
@@ -62,7 +70,7 @@ export abstract class SocialMediaService {
   abstract getHashtagPosts(hashtag: string, limit?: number): Promise<Post[]>;
   abstract setLoggedIn(loggedIn: boolean): void;
   abstract setStateFromBrowser(sessionData: any): Promise<void>;
-
+  abstract goToHome(page: Page): Promise<void>;
 
 
   /**

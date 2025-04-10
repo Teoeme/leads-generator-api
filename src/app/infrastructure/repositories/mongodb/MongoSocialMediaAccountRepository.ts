@@ -40,7 +40,10 @@ export class MongoSocialMediaAccountRepository implements SocialMediaAccountRepo
       password: account.password,
       isActive: account.isActive,
       lastLogin: account.lastLogin,
-      sessionData: account.sessionData
+      lastLoginStatus: account.lastLoginStatus,
+      sessionData: account.sessionData,
+      proxy: account.proxy,
+      roles: account.roles
     });
     await newAccount.save();
     return this.mapToSocialMediaAccount(newAccount);
@@ -53,8 +56,8 @@ export class MongoSocialMediaAccountRepository implements SocialMediaAccountRepo
   }
 
   async delete(id: string): Promise<boolean> {
-    const result = await SocialMediaAccountModel.deleteOne({ _id: id });
-    return result.deletedCount > 0;
+    const result = await SocialMediaAccountModel.findByIdAndDelete(id);
+    return !!result;
   }
 
   private mapToSocialMediaAccount(account: SocialMediaAccountDocument | any): SocialMediaAccount {
@@ -67,7 +70,10 @@ export class MongoSocialMediaAccountRepository implements SocialMediaAccountRepo
       password: account.password,
       isActive: account.isActive,
       lastLogin: account.lastLogin,
+      lastLoginStatus: account.lastLoginStatus,
       sessionData: account.sessionData,
+      proxy: account.proxy,
+      roles: account.roles,
       createdAt: account.createdAt,
       updatedAt: account.updatedAt
     };

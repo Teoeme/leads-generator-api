@@ -1,4 +1,4 @@
-import { FaInstagram,FaFacebook,FaLinkedin} from 'react-icons/fa'
+import { FaTwitter, FaInstagram, FaFacebook, FaTiktok, FaLinkedin } from "react-icons/fa"
 
 export enum LastLoginStatus {
     SUCCESS = 'SUCCESS',
@@ -6,24 +6,62 @@ export enum LastLoginStatus {
     PENDING = 'PENDING'
 }
 
+export enum AccountRole {
+    SCRAPPING = 'SCRAPPING',     // Cuenta para recolectar información y leads
+    ENGAGEMENT = 'ENGAGEMENT',   // Cuenta para interactuar con usuarios
+    MESSAGING = 'MESSAGING'      // Cuenta para enviar mensajes directos
+}
+
+export interface ProxyAssignment {
+    proxyId: string;    // ID del proxy
+    enabled: boolean;   // Si el proxy está activado o no para esta cuenta
+}
+
 export interface Account {
     id?: string;
+    _id?: string;
     username: string;
     createdAt?: string;
     updatedAt?: string;
-    type: keyof typeof AccountsTypeList;
-    password?:string;
-    lastLogin?:string; //Ultimo inicio de sesion
-    lastLoginStatus?:keyof typeof LastLoginStatus; // Ultimo estado de inicio de sesion
+    type: string;
+    password: string;
+    lastLogin?: string; //Ultimo inicio de sesion
+    lastLoginStatus?: keyof typeof LastLoginStatus; // Ultimo estado de inicio de sesion
+    proxy?: ProxyAssignment | null;
+    roles?: AccountRole[];
 }
 
+export type AccountType = { label: string, value: string, icon?: React.ReactNode, bgStyles?: string }
 
-
-
-export type AccountType = {label:string,value:string,icon?:React.ReactNode,bgStyles?:string}
-        
 export const AccountsTypeList = {
-    INSTAGRAM : {label:'Instagram',value:'INSTAGRAM',icon: FaInstagram,bgStyles:'bg-gradient-to-r from-purple-700 to-yellow-600 '},
-    FACEBOOK :{label:'Facebook',value:'FACEBOOK',icon: FaFacebook,bgStyles:'bg-gradient-to-b from-blue-300 to-blue-600 '},
-    LINKEDIN : {label:'Linkedin',value:'LINKEDIN',icon: FaLinkedin,bgStyles:'bg-gradient-to-r from-blue-500 to-gray-500 '}
+    TWITTER: {
+        value: 'twitter',
+        label: 'Twitter',
+        icon: FaTwitter,
+        bgStyles: 'text-white bg-gradient-to-r from-blue-500 to-purple-500'
+    },
+    INSTAGRAM: {
+        value: 'instagram',
+        label: 'Instagram',
+        icon: FaInstagram,
+        bgStyles: 'text-white bg-gradient-to-r from-pink-500 to-orange-500'
+    },
+    FACEBOOK: {
+        value: 'facebook',
+        label: 'Facebook',
+        icon: FaFacebook,
+        bgStyles: 'text-white bg-gradient-to-r from-blue-500 to-purple-500'
+    },
+    TIKTOK: {
+        value: 'tiktok',
+        label: 'TikTok',
+        icon: FaTiktok,
+        bgStyles: 'text-white bg-gradient-to-r from-red-500 to-orange-500'
+    },
+    LINKEDIN: {
+        value: 'linkedin',
+        label: 'LinkedIn',
+        icon: FaLinkedin,
+        bgStyles: 'text-white bg-gradient-to-r from-blue-500 to-purple-500'
+    }
 } 
