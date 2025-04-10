@@ -1,6 +1,8 @@
 import { appConfig } from '../config/app-config';
 import randomUseragent from 'random-useragent';
 import { ActionType } from '../simulation/actions/ActionTypes';
+import { SocialMediaType } from '../../domain/entities/SocialMediaAccount';
+import { socialMediaLimits } from '../simulation/behaviors/BehaviorProfile';
 
 /**
  * Servicio para simular comportamiento humano en interacciones con redes sociales
@@ -10,10 +12,10 @@ export class HumanBehaviorService {
   private activityCounts: Map<string, Map<string, number>> = new Map();
   private lastResetDate: Date = new Date();
   private lastActionTime: number = 0;
-
-  private resetDate: Date = new Date();
   private nextResetTimeStamp: number = 0;
   
+  // Mapa para almacenar el tipo de red social por cuenta
+  private accountTypes: Map<string, SocialMediaType> = new Map();
 
   private constructor() {
     // Resetear contadores diariamente
@@ -28,10 +30,40 @@ export class HumanBehaviorService {
   }
 
   /**
+   * Registra el tipo de red social de una cuenta
+   * @param accountId ID de la cuenta
+   * @param type Tipo de red social
+   */
+  public registerAccountType(accountId: string, type: SocialMediaType): void {
+    this.accountTypes.set(accountId, type);
+  }
+
+  /**
+   * Obtiene el tipo de red social registrado para una cuenta
+   * @param accountId ID de la cuenta
+   * @returns Tipo de red social o undefined si no está registrado
+   */
+  public getAccountType(accountId: string): SocialMediaType | undefined {
+    return this.accountTypes.get(accountId);
+  }
+
+  /**
    * Genera un retraso aleatorio dentro del rango especificado
    */
-  public async randomDelay(type: keyof typeof appConfig.humanBehavior.delays): Promise<void> {
-    const { min, max } = appConfig.humanBehavior.delays[type];
+  public async randomDelay(type: keyof typeof appConfig.humanBehavior.delays, accountId?: string): Promise<void> {
+    let min = appConfig.humanBehavior.delays[type].min;
+    let max = appConfig.humanBehavior.delays[type].max;
+    
+    // Si se proporciona accountId y tenemos un tipo de red social registrado,
+    // usar los límites específicos de esa red social para el intervalo entre acciones
+    if (accountId) {
+      const socialType = this.accountTypes.get(accountId);
+      if (socialType && type === 'betweenActions' && socialMediaLimits[socialType]) {
+        min = socialMediaLimits[socialType].actionsInterval.min;
+        max = socialMediaLimits[socialType].actionsInterval.max;
+      }
+    }
+    
     const delay = Math.floor(Math.random() * (max - min + 1) + min);
     
     return new Promise(resolve => setTimeout(resolve, delay));
@@ -42,29 +74,65 @@ export class HumanBehaviorService {
    * @param accountId ID de la cuenta que realiza la acción
    * @param actionType Tipo de acción a verificar
    */
-  public canPerformAction(accountId: string, actionType: ActionType): {canPerform:boolean,secondsToReset:number,status:'success' | 'error' | 'needToWait'}   {
-    
-    if(!Object.keys(appConfig.humanBehavior.dailyLimits).includes(actionType)) return {canPerform:true,secondsToReset:0,status:'success'}
+  public canPerformAction(accountId: string, actionType: ActionType): {canPerform:boolean, secondsToReset:number, status:'success' | 'error' | 'needToWait'} {
+    // Si no tenemos límites configurados para esta acción, permitir
+    if (!Object.keys(appConfig.humanBehavior.dailyLimits).includes(actionType)) {
+      return {canPerform: true, secondsToReset: 0, status: 'success'};
+    }
 
     this.initializeCountersIfNeeded(accountId);
     
     const accountCounts = this.activityCounts.get(accountId)!;
     const currentCount = accountCounts.get(actionType) || 0;
     
-    const limit = appConfig.humanBehavior.dailyLimits[actionType as keyof typeof appConfig.humanBehavior.dailyLimits];
+    // Obtener el límite base de la configuración
+    const baseLimit = appConfig.humanBehavior.dailyLimits[actionType as keyof typeof appConfig.humanBehavior.dailyLimits];
     
-    return {canPerform:currentCount < limit.max,secondsToReset:this.getSecondsToReset(),status:currentCount < limit.max ? 'success' : 'needToWait'};
+    // Obtener el tipo de red social y sus límites específicos
+    const socialType = this.accountTypes.get(accountId);
+    let maxActions = baseLimit.max;
+    
+    if (socialType && socialMediaLimits[socialType]) {
+      // Ajustar el límite según el tipo de red social
+      const socialLimits = socialMediaLimits[socialType];
+      
+      // Mapear el tipo de acción al límite correspondiente en socialMediaLimits
+      switch (actionType) {
+        case ActionType.LIKE_POST:
+          maxActions = socialLimits.likesPerDay;
+          break;
+        case ActionType.COMMENT_ON_POST:
+          maxActions = socialLimits.commentsPerDay;
+          break;
+        case ActionType.FOLLOW_USER:
+          maxActions = socialLimits.followsPerDay;
+          break;
+        case ActionType.UNFOLLOW_USER:
+          maxActions = socialLimits.unfollowsPerDay;
+          break;
+        case ActionType.SEND_MESSAGE:
+          maxActions = socialLimits.directMessagesPerDay;
+          break;
+        default:
+          // Para otras acciones, usar el límite diario total dividido proporcionalmente
+          const proportionOfDaily = baseLimit.max / 500; // Proporción respecto a un límite base de 500
+          maxActions = Math.floor(socialLimits.dailyActions * proportionOfDaily);
+          break;
+      }
+    }
+    
+    return {
+      canPerform: currentCount < maxActions,
+      secondsToReset: this.getSecondsToReset(),
+      status: currentCount < maxActions ? 'success' : 'needToWait'
+    };
   }
 
- 
-  public getSecondsToReset(): number {
-    return Math.floor((this.nextResetTimeStamp - Date.now()) / 1000);
-  }
   /**
    * Registra una acción realizada por una cuenta específica
    */
   public trackAction(accountId: string, actionType: ActionType): void {
-    if(!Object.keys(appConfig.humanBehavior.dailyLimits).includes(actionType)) return;
+    if (!Object.keys(appConfig.humanBehavior.dailyLimits).includes(actionType)) return;
     this.initializeCountersIfNeeded(accountId);
     
     const accountCounts = this.activityCounts.get(accountId)!;
@@ -74,17 +142,42 @@ export class HumanBehaviorService {
     this.activityCounts.set(accountId, accountCounts);
   }
 
-//Calcula un porcentaje de uso de la cuenta en base a las acciones realizadas
-public calculateUsagePercentage(accountId: string): number {
-  const accountCounts = this.activityCounts.get(accountId)!;
-  if(!accountCounts) return 0;
-  console.log(accountCounts,'accountCounts');
-  const totalActions = Object.values(appConfig.humanBehavior.dailyLimits).reduce((acc, limit) => acc + (limit.max * limit.scoring), 0);
-  console.log(totalActions,'totalActions');
-  const currentActions = Object.values(accountCounts).reduce((acc, count) => acc + (count * appConfig.humanBehavior.dailyLimits[count as keyof typeof appConfig.humanBehavior.dailyLimits].scoring), 0);
-  console.log(currentActions,'currentActions');
-  return (currentActions||0 / totalActions) * 100;
-}
+  // Calcula un porcentaje de uso de la cuenta en base a las acciones realizadas
+  public calculateUsagePercentage(accountId: string): number {
+    const accountCounts = this.activityCounts.get(accountId);
+    if (!accountCounts || accountCounts.size === 0) return 0;
+    
+    // Obtener el tipo de red social
+    const socialType = this.accountTypes.get(accountId);
+    if (!socialType || !socialMediaLimits[socialType]) {
+      // Si no hay tipo específico, usar la lógica original
+      const totalActions = Object.values(appConfig.humanBehavior.dailyLimits)
+        .reduce((acc, limit) => acc + (limit.max * limit.scoring), 0);
+      
+      const currentActions = Array.from(accountCounts.entries())
+        .reduce((acc, [action, count]) => {
+          const actionKey = action as keyof typeof appConfig.humanBehavior.dailyLimits;
+          if (appConfig.humanBehavior.dailyLimits[actionKey]) {
+            return acc + (count * appConfig.humanBehavior.dailyLimits[actionKey].scoring);
+          }
+          return acc;
+        }, 0);
+      
+      return (currentActions / totalActions) * 100;
+    }
+    
+    // Usar límites específicos de la red social
+    const socialLimits = socialMediaLimits[socialType];
+    let totalPossibleActions = socialLimits.dailyActions;
+    let currentActionCount = 0;
+    
+    // Sumar todas las acciones realizadas
+    accountCounts.forEach((count, action) => {
+      currentActionCount += count;
+    });
+    
+    return Math.min(100, (currentActionCount / totalPossibleActions) * 100);
+  }
   
   /**
    * Verifica si es una hora activa para realizar acciones
@@ -101,7 +194,6 @@ public calculateUsagePercentage(accountId: string): number {
     const currentHour = new Date().getHours();
     return appConfig.humanBehavior.activityPatterns.peakHours.includes(currentHour);
   }
-
 
   public getSecondsToNextActiveHour(): number {
     const currentHour = new Date();
@@ -130,15 +222,18 @@ public calculateUsagePercentage(accountId: string): number {
    * Resetea los contadores diarios
    */
   private resetDailyCounts(): void {
-    this.nextResetTimeStamp = Date.now() + 24 * 60 * 60 * 1000;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    this.activityCounts.clear();
+    this.lastResetDate = new Date();
+    console.log('Daily counts reset at', this.lastResetDate);
+  }
+
+  public getSecondsToReset(): number {
+    const now = new Date();
+    const resetTime = new Date(now);
+    resetTime.setHours(0, 0, 0, 0);
+    resetTime.setDate(resetTime.getDate() + 1);
     
-    if (this.lastResetDate < today) {
-      this.activityCounts = new Map();
-      this.lastResetDate = today;
-      console.log('Daily activity counts reset');
-    }
+    return Math.floor((resetTime.getTime() - now.getTime()) / 1000);
   }
 
   /**

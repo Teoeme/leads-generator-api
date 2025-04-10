@@ -6,6 +6,9 @@ import leadRoutes from './lead-routes';
 import simulationRoutes from './simulation-routes';
 import simulatorSetRoutes from './simulator-set-routes';
 import campaignRoutes from './campain-routes';
+import logRoutes from '../../interfaces/routes/logRoutes';
+import proxyRoutes from './proxyRoutes';
+
 const router = Router();
 
 router.use('/auth', authRoutes);
@@ -15,4 +18,7 @@ router.use('/leads', leadRoutes);
 router.use('/simulations', simulationRoutes);
 router.use('/simulatorsset', simulatorSetRoutes);
 router.use('/campaigns', campaignRoutes);
+router.use('/logs', logRoutes);
+router.use('/proxies', proxyRoutes);
+
 export default router; 

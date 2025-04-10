@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { SocialMediaAccount, SocialMediaLastLoginStatus, SocialMediaType } from '../../domain/entities/SocialMediaAccount';
+import { SocialMediaAccount, SocialMediaLastLoginStatus, SocialMediaType, SocialMediaAccountRole } from '../../domain/entities/SocialMediaAccount';
 
 export interface SocialMediaAccountDocument extends Omit<SocialMediaAccount, 'id'>, Document {
   // Document ya tiene _id, así que omitimos id de SocialMediaAccount
@@ -19,7 +19,15 @@ const SocialMediaAccountSchema = new Schema<SocialMediaAccountDocument>(
     isActive: { type: Boolean, default: true },
     lastLogin: { type: Date },
     lastLoginStatus: { type: String, enum: Object.values(SocialMediaLastLoginStatus) },
-    sessionData: { type: Object }
+    sessionData: { type: Object },
+    proxy: {
+      proxyId: { type: Schema.Types.ObjectId, ref: 'ProxyConfiguration' },
+      enabled: { type: Boolean, default: true }
+    },
+    roles: [{ 
+      type: String, 
+      enum: Object.values(SocialMediaAccountRole)
+    }]
   },
   { timestamps: true }
 );

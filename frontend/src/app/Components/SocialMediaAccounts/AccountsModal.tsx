@@ -20,7 +20,8 @@ const AccountsModal = () => {
             type:data.type as keyof typeof AccountsTypeList,
             username:data.username as string,
             password:data.password as string,
-            id:data?.id
+            id:data?.id,
+            proxy:data?.proxy
         }
         if(type==="add"){
             const account=await createAccount(accountData)
