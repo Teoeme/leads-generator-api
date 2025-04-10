@@ -8,6 +8,7 @@ export interface LeadRepository {
   findByUserIdAndSocialMediaType(userId: string, type: SocialMediaType): Promise<Lead[]>;
   findByUserIdAndSocialMediaId(userId: string, socialMediaId: string): Promise<Lead | null>;
   create(lead: Lead): Promise<Lead>;
+  createMany(leads: Lead[]): Promise<Lead[]>;
   update(id: string, lead: Partial<Lead>): Promise<Lead | null>;
   updateStatus(id: string, status: LeadStatus): Promise<Lead | null>;
   delete(id: string): Promise<boolean>;

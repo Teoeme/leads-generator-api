@@ -1,4 +1,5 @@
 import { Lead, LeadStatus } from '../../../domain/entities/Lead';
+import { SocialMediaType } from '../../../domain/entities/SocialMediaAccount';
 import { LeadRepository } from '../../../domain/repositories/LeadRepository';
 import { LeadModel, LeadDocument } from '../../models/LeadModel';
 
@@ -49,6 +50,29 @@ export class MongoLeadRepository implements LeadRepository {
     await newLead.save();
     return this.mapToLead(newLead);
   }
+
+  async createMany(leads: Lead[]): Promise<Lead[]> {
+    const leadsToAdd = leads.filter(lead => !lead.id);
+
+    for (const lead of leadsToAdd) {
+      const alreadyExists = await this.findByUserIdAndSocialMediaId(lead.userId, lead.socialMediaId);
+      if (alreadyExists){
+        await this.update(alreadyExists.id!, lead);
+      }else{
+        leadsToAdd.push(lead);
+      }
+    }
+
+    const newLeads = await LeadModel.insertMany(leadsToAdd);
+    return newLeads.map(lead => this.mapToLead(lead as LeadDocument));
+  }
+
+  async findByUserIdAndSocialMediaType(userId: string, type: SocialMediaType): Promise<Lead[]> {
+    const leads = await LeadModel.find({ userId, socialMediaType: type }).lean();
+    return leads.map(lead => this.mapToLead(lead as LeadDocument));
+  }
+
+
 
   async update(id: string, lead: Partial<Lead>): Promise<Lead | null> {
     const updatedLead = await LeadModel.findByIdAndUpdate(id, lead, { new: true }).lean();

@@ -5,12 +5,14 @@ import { CampainRepository } from "../../domain/repositories/CampainRepository";
 import { SimulatorSet } from "../../domain/services/SimulatorSet";
 import { MongoCampainRepository } from "../../infrastructure/repositories/mongodb/MongoCampainRepository";
 import { SimulationService } from "./SimulationService";
-
+import { MongoLeadRepository } from "../../infrastructure/repositories/mongodb/MongoLeadRepository";
+import { LeadRepository } from "../../domain/repositories/LeadRepository";
 export class Orchetrator {
     private static instance: Orchetrator;
     private simulatorSet: SimulatorSet;
     private campaignRepository: CampainRepository;
-
+    private leadRepository: LeadRepository;
+    
     private runningStack: Map<Intervention['id'], {
         socialMediaType: SocialMediaType,
         intervention: Intervention,
@@ -26,6 +28,7 @@ export class Orchetrator {
     private constructor() {
         this.simulatorSet = SimulatorSet.getInstance();
         this.campaignRepository = new MongoCampainRepository();
+        this.leadRepository = new MongoLeadRepository();
         this.runningStack = new Map();
 
         //Escuchar cuando un simulador este disponible
@@ -229,6 +232,9 @@ export class Orchetrator {
         this.runningStack.delete(interventionId);
 
         // Almacenar los leads en la base de datos
+        await this.leadRepository.createMany(leads);
+
+        
 
     }
 
