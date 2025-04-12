@@ -20,7 +20,7 @@ const corsOptions = {
 }
 app.use(cors(corsOptions));
 app.use(helmet());
-app.use(morgan('dev'));
+// app.use(morgan('dev'));
 app.use(passport.initialize());
 
 // Routes

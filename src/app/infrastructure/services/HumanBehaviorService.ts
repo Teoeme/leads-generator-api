@@ -2,7 +2,8 @@ import { appConfig } from '../config/app-config';
 import randomUseragent from 'random-useragent';
 import { ActionType } from '../simulation/actions/ActionTypes';
 import { SocialMediaType } from '../../domain/entities/SocialMediaAccount';
-import { socialMediaLimits } from '../simulation/behaviors/BehaviorProfile';
+import { SocialMediaLimits, socialMediaLimits } from '../simulation/behaviors/BehaviorProfile';
+import { logger } from './LoggerService';
 
 /**
  * Servicio para simular comportamiento humano en interacciones con redes sociales
@@ -54,16 +55,6 @@ export class HumanBehaviorService {
     let min = appConfig.humanBehavior.delays[type].min;
     let max = appConfig.humanBehavior.delays[type].max;
     
-    // Si se proporciona accountId y tenemos un tipo de red social registrado,
-    // usar los límites específicos de esa red social para el intervalo entre acciones
-    if (accountId) {
-      const socialType = this.accountTypes.get(accountId);
-      if (socialType && type === 'betweenActions' && socialMediaLimits[socialType]) {
-        min = socialMediaLimits[socialType].actionsInterval.min;
-        max = socialMediaLimits[socialType].actionsInterval.max;
-      }
-    }
-    
     const delay = Math.floor(Math.random() * (max - min + 1) + min);
     
     return new Promise(resolve => setTimeout(resolve, delay));
@@ -76,10 +67,6 @@ export class HumanBehaviorService {
    */
   public canPerformAction(accountId: string, actionType: ActionType): {canPerform:boolean, secondsToReset:number, status:'success' | 'error' | 'needToWait'} {
     // Si no tenemos límites configurados para esta acción, permitir
-    if (!Object.keys(appConfig.humanBehavior.dailyLimits).includes(actionType)) {
-      return {canPerform: true, secondsToReset: 0, status: 'success'};
-    }
-
     this.initializeCountersIfNeeded(accountId);
     
     const accountCounts = this.activityCounts.get(accountId)!;
@@ -90,41 +77,19 @@ export class HumanBehaviorService {
     
     // Obtener el tipo de red social y sus límites específicos
     const socialType = this.accountTypes.get(accountId);
-    let maxActions = baseLimit.max;
+    let maxActions = baseLimit?.max||null;
     
     if (socialType && socialMediaLimits[socialType]) {
       // Ajustar el límite según el tipo de red social
       const socialLimits = socialMediaLimits[socialType];
-      
-      // Mapear el tipo de acción al límite correspondiente en socialMediaLimits
-      switch (actionType) {
-        case ActionType.LIKE_POST:
-          maxActions = socialLimits.likesPerDay;
-          break;
-        case ActionType.COMMENT_ON_POST:
-          maxActions = socialLimits.commentsPerDay;
-          break;
-        case ActionType.FOLLOW_USER:
-          maxActions = socialLimits.followsPerDay;
-          break;
-        case ActionType.UNFOLLOW_USER:
-          maxActions = socialLimits.unfollowsPerDay;
-          break;
-        case ActionType.SEND_MESSAGE:
-          maxActions = socialLimits.directMessagesPerDay;
-          break;
-        default:
-          // Para otras acciones, usar el límite diario total dividido proporcionalmente
-          const proportionOfDaily = baseLimit.max / 500; // Proporción respecto a un límite base de 500
-          maxActions = Math.floor(socialLimits.dailyActions * proportionOfDaily);
-          break;
-      }
+      maxActions = socialLimits[actionType as keyof SocialMediaLimits].max || null;
     }
-    
+    const canPerform = maxActions ? currentCount <= maxActions : true;
+    logger.debug(`Can perform action: [${actionType}] for account: [${accountId}] -> ${canPerform}`, {canPerform, maxActions, currentCount})
     return {
-      canPerform: currentCount < maxActions,
+      canPerform,
       secondsToReset: this.getSecondsToReset(),
-      status: currentCount < maxActions ? 'success' : 'needToWait'
+      status: maxActions ? currentCount <= maxActions ? 'success' : 'needToWait' : 'success'
     };
   }
 
@@ -132,7 +97,8 @@ export class HumanBehaviorService {
    * Registra una acción realizada por una cuenta específica
    */
   public trackAction(accountId: string, actionType: ActionType): void {
-    if (!Object.keys(appConfig.humanBehavior.dailyLimits).includes(actionType)) return;
+    // if (!Object.keys(appConfig.humanBehavior.dailyLimits).includes(actionType)) return;
+    logger.debug(`Tracking action: [${actionType}] for account: [${accountId}]`)
     this.initializeCountersIfNeeded(accountId);
     
     const accountCounts = this.activityCounts.get(accountId)!;
@@ -168,12 +134,15 @@ export class HumanBehaviorService {
     
     // Usar límites específicos de la red social
     const socialLimits = socialMediaLimits[socialType];
-    let totalPossibleActions = socialLimits.dailyActions;
+    let totalPossibleActions = Object.values(socialLimits).reduce((acc, limit) => acc + (limit.max * limit.scoring), 0);
     let currentActionCount = 0;
     
     // Sumar todas las acciones realizadas
     accountCounts.forEach((count, action) => {
-      currentActionCount += count;
+      const actionKey = action as keyof typeof socialLimits;
+      if (socialLimits[actionKey]) {
+        currentActionCount += count * socialLimits[actionKey].scoring;
+      }
     });
     
     return Math.min(100, (currentActionCount / totalPossibleActions) * 100);
@@ -197,17 +166,19 @@ export class HumanBehaviorService {
 
   public getSecondsToNextActiveHour(): number {
     const currentHour = new Date();
-    let nextDay=false;
+    let nextDay = false;
 
     const activeHours = appConfig.humanBehavior.activityPatterns.activeHours.sort((a,b)=>a-b); // ordenar las horas activas
     let nextActiveHour = activeHours.find(hour => hour > currentHour.getHours());
     if(!nextActiveHour) {
-      nextDay=true;
-      nextActiveHour=activeHours[0];
+      nextDay = true;
+      nextActiveHour = activeHours[0];
     }
-    const virtualDate=new Date(currentHour.getFullYear(),currentHour.getMonth(),currentHour.getDate(),nextActiveHour,0,0);
+    const virtualDate = new Date(currentHour.getFullYear(), currentHour.getMonth(), currentHour.getDate(), nextActiveHour, 0, 0);
     if(nextDay) virtualDate.setDate(virtualDate.getDate() + 1);
-    return virtualDate.getTime() - currentHour.getTime();
+    
+    // Convertir milisegundos a segundos antes de devolver
+    return Math.floor((virtualDate.getTime() - currentHour.getTime()) / 1000);
   }
   /**
    * Inicializa contadores para una cuenta si no existen
@@ -224,7 +195,7 @@ export class HumanBehaviorService {
   private resetDailyCounts(): void {
     this.activityCounts.clear();
     this.lastResetDate = new Date();
-    console.log('Daily counts reset at', this.lastResetDate);
+    logger.debug(`Daily counts reset at ${this.lastResetDate}`)
   }
 
   public getSecondsToReset(): number {

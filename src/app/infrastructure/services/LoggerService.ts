@@ -3,10 +3,11 @@ import { createLogger, format, transports } from 'winston';
 import path from 'path';
 import fs from 'fs';
 import { randomUUID } from 'crypto';
+import { SimulationService } from '../../application/services/SimulationService';
 
 // Definir directorio para los logs
 const LOG_DIR = process.env.LOG_DIR || 'logs';
-
+const DEV_MODE = process.env.NODE_ENV === 'development' || false;
 // Asegurar que el directorio de logs existe
 if (!fs.existsSync(LOG_DIR)) {
     fs.mkdirSync(LOG_DIR, { recursive: true });
@@ -27,7 +28,7 @@ const logLevels = {
 const logColors = {
     error: 'red',
     warn: 'yellow',
-    info: 'green',
+    info: 'blue',
     http: 'magenta',
     verbose: 'cyan',
     debug: 'blue',
@@ -47,19 +48,19 @@ const logFormat = format.combine(
 
 // Formato para consola con colores
 const consoleFormat = format.combine(
-    format.colorize({ all: true }),
-    format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    format.timestamp({ format: 'DD-MM-YY HH:mm:ss' }),
     format.printf(
         (info) => {
             const { timestamp, level, message, metadata } = info;
             // Verificar que metadata sea un objeto y tenga propiedades
             const metaString = metadata && typeof metadata === 'object' && Object.keys(metadata).length 
-                ? `${JSON.stringify(metadata, null, 2)}` 
-                : '';
-                
-            return `${timestamp} [${level}]: ${message} ${metaString}`;
+            ? `${JSON.stringify(metadata, null, 2)}` 
+            : '';
+            
+            return `${timestamp} [${level.toUpperCase()}]: ${message} ${DEV_MODE ? metaString : null}`;
         }
-    )
+    ),
+    format.colorize({ all: true,colors:logColors }),
 );
 
 // Definir interfaces para categorías de logs
@@ -105,7 +106,9 @@ export class LoggerService {
                 
                 // Log para salida en consola durante desarrollo
                 new transports.Console({
-                    format: consoleFormat
+                    format: consoleFormat,
+                    level: DEV_MODE ? 'debug' : 'info',
+                
                 })
             ],
             exitOnError: false
@@ -168,8 +171,8 @@ export class LoggerService {
         }, error);
     }
     
-    public logSimulatorStatus(simulatorId: string, status: string, context: LogContext): void {
-        this.info(`Simulator ${simulatorId} ${status}`, {
+    public logSimulatorStatus(simulator: SimulationService, status: string, context: LogContext): void {
+        this.info(`[${simulator.socialMediaAccount.type}] Simulator [${simulator.socialMediaAccount.username}] ${status}`, {
             ...context,
             event: 'SIMULATOR_STATUS',
             simulatorStatus: status

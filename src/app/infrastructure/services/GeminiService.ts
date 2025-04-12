@@ -8,20 +8,63 @@ import 'dotenv/config'
 import { AIService } from '../../domain/services/AIService';
 
 export class GeminiApiService implements AIService {
+    private static instance: GeminiApiService;
+    private cuotaLimits={
+        requesPerMinute:10
+    }
+    private requestsTimestampsHistory:number[]=[]
+
+    public static getInstance(): GeminiApiService {
+        if(!GeminiApiService.instance){
+            GeminiApiService.instance = new GeminiApiService();
+        }
+        return GeminiApiService.instance;
+    }
+
     private BASE_URL ='https://generativelanguage.googleapis.com'
     private URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${process.env.GOOGLE_GEMINI_API_KEY}`;
-
     private fileManager = new GoogleAIFileManager(process.env.GOOGLE_GEMINI_API_KEY!);
-private genAi=new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
+    private genAi=new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
 
 
+    private checkQuotaLimitPerMinute():{isAllowed:boolean,timeToWait:number}{
+        const currentTimestamp = Date.now();
+        const oneMinuteAgo = currentTimestamp - 60000; // 60 segundos atrás
+        
+        // Filtrar las peticiones que ocurrieron en el último minuto
+        const requestsInLastMinute = this.requestsTimestampsHistory.filter(
+            timestamp => timestamp > oneMinuteAgo
+        );
+        
+        
+        // Si el número de solicitudes es menor que el límite, permitir la solicitud
+        if (requestsInLastMinute.length < this.cuotaLimits.requesPerMinute) {
+            return {isAllowed: true, timeToWait: 0};
+        }
+        
+        // Si hemos alcanzado el límite, calcular cuánto tiempo debemos esperar
+        // hasta que la solicitud más antigua salga de la ventana de un minuto
+        const oldestRequestInWindow = Math.min(...requestsInLastMinute);
+        const timeToWait = (oldestRequestInWindow + 60000) - currentTimestamp;
+        
+        return {
+            isAllowed: false,
+            timeToWait: Math.max(0, timeToWait) // Asegurar que nunca sea negativo
+        };
+    }
 
     async generateContent(prompt:string):Promise<string>{
+        const cuotaCheck=this.checkQuotaLimitPerMinute()
+        if(!cuotaCheck.isAllowed){
+            console.log('Cuota excedida, esperando...',cuotaCheck.timeToWait, ' milisegundos')
+            await new Promise(resolve=>setTimeout(resolve,cuotaCheck.timeToWait))
+        }
         try{
         const genAi=new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!)
         const model=genAi.getGenerativeModel({model:'gemini-2.0-flash-exp'})
         model.apiKey=process.env.GOOGLE_GEMINI_API_KEY!
         const response = await model.generateContent(prompt);
+        this.requestsTimestampsHistory.push(Date.now())
         const data = await response.response.text();
         console.log(data,'respuesta de gemini')
         return data;

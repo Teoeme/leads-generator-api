@@ -4,11 +4,11 @@ import { SimulationService } from "../../application/services/SimulationService"
 import { SocialMediaService } from "../../application/services/SocialMediaService";
 import { SocialMediaType } from "../../domain/entities/SocialMediaAccount";
 import { AIAgent } from "../../domain/services/AIAgent";
-import { SimulatorSet } from "../../domain/services/SimulatorSet";
 import { MongoSocialMediaAccountRepository } from "../repositories/mongodb/MongoSocialMediaAccountRepository";
 import { GeminiApiService } from "../services/GeminiService";
 import { BehaviorProfileType } from "../simulation/behaviors/BehaviorProfile";
 import { MongoProxyRepository } from "../repositories/mongodb/MongoProxyRepository";
+import { SimulatorSet } from "../../application/services/SimulatorSet";
 
 export class SimulatorSetController {
     private static instance: SimulatorSetController;
@@ -57,7 +57,7 @@ export class SimulatorSetController {
             throw new Error('Invalid account type');
         }
   
-        const geminiService = new GeminiApiService();
+        const geminiService = GeminiApiService.getInstance();
   
         const aiAgent = new AIAgent({
           aiService: geminiService

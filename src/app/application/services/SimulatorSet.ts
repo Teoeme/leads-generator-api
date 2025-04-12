@@ -1,6 +1,6 @@
 import EventEmitter from "events";
 import { SimulationService } from "../../application/services/SimulationService";
-import { SocialMediaType, SocialMediaAccountRole } from "../entities/SocialMediaAccount";
+import { SocialMediaType, SocialMediaAccountRole } from "../../domain/entities/SocialMediaAccount";
 
 export class SimulatorSet {
     private static instance: SimulatorSet;
@@ -36,9 +36,9 @@ export class SimulatorSet {
             this.eventEmitter.emit('simulatorError', simulator);
         });
 
-        simulator.on('interventionError', (interventionId: string) => {
-            console.log('Escuchando intervención error emitido desde el simulation service',interventionId);
-            this.eventEmitter.emit('interventionError', interventionId);
+        simulator.on('interventionError', () => {
+            console.log('Escuchando intervención error emitido desde el simulation service',simulator.socialMediaAccount.id!);
+            this.eventEmitter.emit('interventionError', simulator.socialMediaAccount.id!);
         });
 
         return simulator;

@@ -26,7 +26,7 @@ export const appConfig = {
     // Patrones de actividad
     activityPatterns: {
       // Horas activas (0-23)
-      activeHours: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+      activeHours: [0,1,8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,23],
       
       // Horas pico (mayor actividad)
       peakHours: [12, 13, 17, 18, 19, 20],

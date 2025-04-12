@@ -1,17 +1,14 @@
 import { IgApiClient } from 'instagram-private-api';
-import { SocialMediaAccount, SocialMediaType } from '../../domain/entities/SocialMediaAccount';
-import { Lead, LeadStatus } from '../../domain/entities/Lead';
-import {  UserProfile, Post, Comment } from '../../domain/services/SocialMediaService';
-import { HumanBehaviorService } from '../../infrastructure/services/HumanBehaviorService';
-import { SocialMediaService } from './SocialMediaService';
 import { Page } from 'playwright';
-import { ActionType } from '../../infrastructure/simulation/actions/ActionTypes';
+import { Lead, LeadStatus } from '../../domain/entities/Lead';
 import { ProxyConfiguration, ProxyStatus } from '../../domain/entities/Proxy/ProxyConfiguration';
+import { SocialMediaAccount, SocialMediaType } from '../../domain/entities/SocialMediaAccount';
+import { Comment, Post, UserProfile } from '../../domain/services/SocialMediaService';
+import { SocialMediaService } from './SocialMediaService';
 
 export class InstagramService extends SocialMediaService {
   private ig: IgApiClient;
   private _loggedIn: boolean = false;
-  private humanBehavior: HumanBehaviorService;
 
   constructor(account: SocialMediaAccount,proxy: ProxyConfiguration | null) {
     super(account,proxy);
@@ -19,9 +16,7 @@ export class InstagramService extends SocialMediaService {
       throw new Error('Invalid account type for Instagram service');
     }
     this.ig = new IgApiClient();
-    this.humanBehavior = HumanBehaviorService.getInstance();
     
-    // Cargar datos de sesión si existen
     if (account.sessionData) {
       this._loggedIn = true;
     }
@@ -35,7 +30,7 @@ export class InstagramService extends SocialMediaService {
   async login(): Promise<boolean> {
     try {
       // Simular retraso para comportamiento humano
-      await this.delay(this.humanBehavior.getRandomDelay(1000, 3000));
+      // await this.delay(this.humanBehavior.getRandomDelay(1000, 3000));
       
       // Configurar el dispositivo antes de cualquier operación - CRUCIAL para el login directo
       this.ig.state.generateDevice(this.getAccount().username);
@@ -169,14 +164,14 @@ export class InstagramService extends SocialMediaService {
           console.error('Error during Instagram login:', error);
           
           // Capturar screenshot para depuración
-          if (page) {
-            try {
-              const screenshot = await page.screenshot({ path: `login-error-${Date.now()}.png` });
-              console.log('Error screenshot saved');
-            } catch (screenshotError) {
-              console.error('Failed to capture error screenshot:', screenshotError);
-            }
-          }
+          // if (page) {
+          //   try {
+          //     const screenshot = await page.screenshot({ path: `login-error-${Date.now()}.png` });
+          //     console.log('Error screenshot saved');
+          //   } catch (screenshotError) {
+          //     console.error('Failed to capture error screenshot:', screenshotError);
+          //   }
+          // }
           
           throw error;
         }
@@ -186,9 +181,6 @@ export class InstagramService extends SocialMediaService {
 
   async logout(): Promise<boolean> {
     try {
-      // Simular retraso para comportamiento humano
-      await this.delay(this.humanBehavior.getRandomDelay(500, 1500));
-      
       // Instagram API doesn't have a direct logout method
       // We'll just clear the session
       this._loggedIn = false;
@@ -215,19 +207,9 @@ export class InstagramService extends SocialMediaService {
   async getUserProfile(username: string): Promise<UserProfile> {
     this.checkLogin();
     
-    // Verificar límites diarios
-    if (!this.humanBehavior.canPerformAction(this.getAccount().id!, ActionType.VISIT_PROFILE)) {
-      throw new Error('Daily profile visit limit reached');
-    }
-    
-    // Simular comportamiento humano con retrasos
-    await this.humanBehavior.randomDelay('betweenActions');
-    
+
     try {
       const user = await this.ig.user.searchExact(username);
-      
-      // Registrar la acción
-      this.humanBehavior.trackAction(this.getAccount().id!, ActionType.VISIT_PROFILE);
       
       // Obtener información completa del perfil
       const userInfo = await this.ig.user.info(user.pk);
@@ -257,9 +239,6 @@ export class InstagramService extends SocialMediaService {
     this.checkLogin();
     
     try {
-      // Simular comportamiento humano con retrasos
-      await this.humanBehavior.randomDelay('betweenActions');
-      
       const media = await this.ig.media.info(postId);
       const post = media.items[0];
       
@@ -320,9 +299,6 @@ async goToHome(page:Page): Promise<void>{
     this.checkLogin();
     
     try {
-      // Simular comportamiento humano con retrasos
-      await this.humanBehavior.randomDelay('betweenActions');
-      
       // Obtener información del post
       const mediaInfo = await this.ig.media.info(postId);
       
@@ -351,9 +327,6 @@ async goToHome(page:Page): Promise<void>{
     this.checkLogin();
     
     try {
-      // Simular comportamiento humano con retrasos
-      await this.humanBehavior.randomDelay('betweenActions');
-      
       const hashtagFeed = this.ig.feed.tag(hashtag);
       const posts = await hashtagFeed.items();
       
@@ -384,29 +357,20 @@ async goToHome(page:Page): Promise<void>{
       let count = 0;
       
       do {
-        // Simular comportamiento humano entre páginas de seguidores
-        if (items.length > 0) {
-          await this.humanBehavior.randomDelay('betweenPageScrolls');
-        }
         
         items = await followersFeed.items();
         
         for (const follower of items) {
-          // Verificar límites diarios
-          if (!this.humanBehavior.canPerformAction(this.getAccount().id!, ActionType.VISIT_PROFILE)) {
-            console.log('Daily profile visit limit reached');
-            return leads;
-          }
-          
+    
           // Simular comportamiento humano entre visitas a perfiles
-          await this.humanBehavior.randomDelay('betweenProfileVisits');
+          // await this.humanBehavior.randomDelay('betweenProfileVisits');
           
           try {
             // Obtener información detallada del perfil
             const userInfo = await this.ig.user.info(follower.pk);
             
             // Registrar la acción
-            this.humanBehavior.trackAction(this.getAccount().id!, ActionType.VISIT_PROFILE);
+            // this.humanBehavior.trackAction(this.getAccount().id!, ActionType.VISIT_PROFILE);
             
             // Crear lead
             const lead: Lead = {
@@ -521,15 +485,8 @@ async goToHome(page:Page): Promise<void>{
     this.checkLogin();
     
     // Verificar si se puede realizar la acción según límites diarios
-    if (!this.humanBehavior.canPerformAction(this.getAccount().id!, ActionType.SEND_MESSAGE)) {
-      console.warn('Se ha alcanzado el límite diario de mensajes');
-      return false;
-    }
-    
+   
     try {
-      // Simular retraso para comportamiento humano
-      await this.humanBehavior.randomDelay('betweenActions');
-      
       // Buscar el usuario
       const user = await this.ig.user.searchExact(username);
       
@@ -538,9 +495,6 @@ async goToHome(page:Page): Promise<void>{
       
       // Enviar el mensaje
       await thread.broadcastText(message);
-      
-      // Registrar la acción
-      this.humanBehavior.trackAction(this.getAccount().id!, ActionType.SEND_MESSAGE);
       
       return true;
     } catch (error) {
@@ -555,24 +509,13 @@ async goToHome(page:Page): Promise<void>{
   async followUser(username: string): Promise<boolean> {
     this.checkLogin();
     
-    // Verificar si se puede realizar la acción según límites diarios
-    if (!this.humanBehavior.canPerformAction(this.getAccount().id!, ActionType.FOLLOW_USER)) {
-      console.warn('Se ha alcanzado el límite diario de follows');
-      return false;
-    }
     
     try {
-      // Simular retraso para comportamiento humano
-      await this.humanBehavior.randomDelay('betweenActions');
-      
       // Buscar el usuario
       const user = await this.ig.user.searchExact(username);
       
       // Seguir al usuario
       await this.ig.friendship.create(user.pk);
-      
-      // Registrar la acción
-      this.humanBehavior.trackAction(this.getAccount().id!, ActionType.FOLLOW_USER);
       
       return true;
     } catch (error) {
@@ -586,18 +529,7 @@ async goToHome(page:Page): Promise<void>{
    */
   async likePost(postId: string): Promise<boolean> {
     this.checkLogin();
-    
-    // Verificar si se puede realizar la acción según límites diarios
-    if (!this.humanBehavior.canPerformAction(this.getAccount().id!, ActionType.LIKE_POST)) {
-      console.warn('Se ha alcanzado el límite diario de likes');
-      return false;
-    }
-    
     try {
-      // Simular retraso para comportamiento humano
-      await this.humanBehavior.randomDelay('betweenActions');
-      
-      // Dar like al post
       await this.ig.media.like({
         mediaId: postId,
         moduleInfo: {
@@ -607,10 +539,6 @@ async goToHome(page:Page): Promise<void>{
         },
         d: 1
       });
-      
-      // Registrar la acción
-      this.humanBehavior.trackAction(this.getAccount().id!, ActionType.LIKE_POST);
-      
       return true;
     } catch (error) {
       console.error(`Error al dar like al post ${postId}:`, error);
@@ -623,26 +551,12 @@ async goToHome(page:Page): Promise<void>{
    */
   async commentOnPost(postId: string, comment: string): Promise<boolean> {
     this.checkLogin();
-    
-    // Verificar si se puede realizar la acción según límites diarios
-    if (!this.humanBehavior.canPerformAction(this.getAccount().id!, ActionType.COMMENT_ON_POST)) {
-      console.warn('Se ha alcanzado el límite diario de comentarios');
-      return false;
-    }
-    
     try {
-      // Simular retraso para comportamiento humano
-      await this.humanBehavior.randomDelay('betweenActions');
-      
-      // Comentar en el post
       await this.ig.media.comment({
         mediaId: postId,
         text: comment
       });
-      
-      // Registrar la acción
-      this.humanBehavior.trackAction(this.getAccount().id!, ActionType.COMMENT_ON_POST);
-      
+
       return true;
     } catch (error) {
       console.error(`Error al comentar en el post ${postId}:`, error);
@@ -780,12 +694,12 @@ async goToHome(page:Page): Promise<void>{
       await this.delay(5000);
       
       // Capturar screenshot para depuración
-      try {
-        const screenshot = await page.screenshot({ path: `post-login-${Date.now()}.png` });
-        console.log('Post-login screenshot saved');
-      } catch (screenshotError) {
-        console.error('Failed to capture post-login screenshot:', screenshotError);
-      }
+      // try {
+      //   const screenshot = await page.screenshot({ path: `post-login-${Date.now()}.png` });
+      //   console.log('Post-login screenshot saved');
+      // } catch (screenshotError) {
+      //   console.error('Failed to capture post-login screenshot:', screenshotError);
+      // }
       
       // Método 1: Usar JavaScript para encontrar y hacer clic en los botones "Ahora no"
       const clickedWithJS = await page.evaluate(() => {

@@ -52,9 +52,9 @@ export class MongoLeadRepository implements LeadRepository {
   }
 
   async createMany(leads: Lead[]): Promise<Lead[]> {
-    const leadsToAdd = leads.filter(lead => !lead.id);
+    const leadsToAdd = []
 
-    for (const lead of leadsToAdd) {
+    for (const lead of leads) {
       const alreadyExists = await this.findByUserIdAndSocialMediaId(lead.userId, lead.socialMediaId);
       if (alreadyExists){
         await this.update(alreadyExists.id!, lead);

@@ -54,7 +54,7 @@ export class SimulationController {
           throw new Error('Invalid account type');
       }
 
-      const geminiService = new GeminiApiService();
+      const geminiService = GeminiApiService.getInstance();
 
       const aiAgent = new AIAgent({
         aiService: geminiService

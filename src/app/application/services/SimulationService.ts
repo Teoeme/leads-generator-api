@@ -13,6 +13,7 @@ import { HumanBehaviorService } from '../../infrastructure/services/HumanBehavio
 import { SocialMediaService } from './SocialMediaService';
 import EventEmitter from 'events';
 import { ProxyStatus } from '../../domain/entities/Proxy/ProxyConfiguration';
+import { logger } from '../../infrastructure/services/LoggerService';
 
 export class SimulationService {
   private browser: Browser | null = null;
@@ -41,7 +42,7 @@ export class SimulationService {
   constructor(
     profileType: BehaviorProfileType = BehaviorProfileType.CASUAL,
     socialMediaService: SocialMediaService,
-    aiAgent: AIAgent
+    aiAgent: AIAgent,
   ) {
     this.humanBehaviorService = HumanBehaviorService.getInstance();
     this.socialMediaService = socialMediaService;
@@ -115,7 +116,9 @@ export class SimulationService {
     }
 
     this._isRunning = false;
-    console.log('Stopping simulation...');
+    logger.debug(`Stopping simulation`);
+    
+
 
     // Limpiar recursos
     await this.cleanup();
@@ -125,23 +128,22 @@ export class SimulationService {
     const actions = intervention.actions;
 
 
-    console.log('')
-    console.log('Running intervention:', intervention.id);
+    logger.debug(`Running intervention: ${intervention.id}`);
     this._isRunning = true;
     this.actionCount = 0;
     const collectedLeads: Lead[] = [];
 
     const needsBrowser = this.requiresBrowser(actions);
-    console.log(`Intervention needs browser: ${needsBrowser}`);
+    logger.debug(`Intervention needs browser: ${needsBrowser}`);
 
     const isLoggedIn = this.socialMediaService.loggedIn;
-    console.log(`Intervention is logged in: ${isLoggedIn}`);
+    logger.debug(`Intervention is logged-in: ${isLoggedIn}`);
 
     if (!isLoggedIn) {
       try {
         await this.loginIn(needsBrowser);
       } catch (error) {
-        console.error('Error al iniciar sesión:', error);
+        logger.error('Error al iniciar sesión:', {error});
         this.emit('log', `Error al iniciar sesión: ${error}`);
         this._isRunning = false;
         this.emit('interventionError', 'Error in login');
@@ -154,31 +156,36 @@ export class SimulationService {
     for (const action of actions) {
 
       if (!this.humanBehaviorService.isActiveHour()) {
-        console.log('No es hora activa')
         const delayToNextActiveHour = this.humanBehaviorService.getSecondsToNextActiveHour();
-        console.log('No es hora activa. Proxima hora: ', new Date(Date.now() + delayToNextActiveHour * 1000).toLocaleTimeString())
+        logger.debug(`No es hora activa. Proxima hora: ${new Date(Date.now() + delayToNextActiveHour * 1000).toLocaleTimeString()}`)
         this.emit('log', `No es hora activa. Proxima hora: ${new Date(Date.now() + delayToNextActiveHour * 1000).toLocaleTimeString()}`)
         await this.delay(delayToNextActiveHour * 1000)
       }
 
       if (this.shouldTakeBreak()) {
-        console.log('Tomando descanso ----- ⏰')
+        logger.debug('Tomando descanso ----- ⏰')
         this.emit('log', `Tomando descanso ----- ⏰`)
         await this.takeBreak();
       }
 
       // Ejecutar la acción
-      const { result, leads, timeToWait } = await this.executeAction(action, intervention.leadCriteria);
+      const { result, leads, timeToWait, blockingError } = await this.executeAction(action, intervention.leadCriteria);
       if (result === 'success' && leads && leads.length > 0) {
-        console.log('Leads recolectados:', leads)
+        logger.debug('Leads recolectados:', leads)
         collectedLeads.push(...leads);
       } else if (result === 'needToWait' && timeToWait) {
-        console.log('Tiempo de espera:', timeToWait)
+        logger.debug(`Tiempo de espera: ${timeToWait}`)
         await this.delay((timeToWait + 60) * 1000); // 60 segundos de margen
         //Reintentar la acción
         await this.executeAction(action, intervention.leadCriteria);
       } else if (result === 'error') {
-        console.log('Error al ejecutar la acción:', action.action)
+        logger.error(`Error al ejecutar la acción: ${action.action}`, {blockingError})
+        if(blockingError){
+          this.emit('simulatorError', this);
+          this.needAttention = true;
+          logger.error('Blocking error. Stopping simulation...   🤡🤡🤡🤡🤡🤡🤡')
+          throw new Error('Blocking error. Stopping simulation...');
+        }
       }
 
       // Incrementar contador de acciones
@@ -194,18 +201,14 @@ export class SimulationService {
     await onFinish?.(collectedLeads);
     this._isRunning = false;
     this.emit('simulatorAvailable', this);
-
+  return
   }
 
   /**
    * Ejecuta una acción específica
    */
-  private async executeAction(action: Action, leadCriteria?: LeadCriteria): Promise<{ result: 'success' | 'error' | 'needToWait', leads?: Lead[], timeToWait?: number }> {
-    // Calcular el tiempo de espera basado en el patrón de tiempo
-    console.log('Ejecutando acción:', action.action)
-    // const delay = this.calculateDelay(action.timePattern);
-    // console.log('Tiempo de espera:', delay)
-    // await this.delay(delay);
+  private async executeAction(action: Action, leadCriteria?: LeadCriteria): Promise<{ result: 'success' | 'error' | 'needToWait', leads?: Lead[], timeToWait?: number, blockingError?: boolean }> {
+    logger.debug(`Ejecutando acción: ${action.action}`)
 
     const canPerformAction = this.humanBehaviorService.canPerformAction(this.socialMediaService.getAccount().id!, action.action);
     if (!canPerformAction.canPerform) return { result: canPerformAction.status, timeToWait: canPerformAction.secondsToReset };
@@ -249,7 +252,7 @@ export class SimulationService {
               const likers = await this.socialMediaService.getPostLikes(postId, limit);
 
               for (const liker of likers) {
-                console.log('Liker:', liker)
+                logger.debug(`Liker: ${liker}`)
                 if (this.shouldProcessAsLead(liker, leadCriteria)) {
                   const lead = await this.createLeadFromProfile(liker, 'likes', action.target.postUrl);
                   leads.push(lead);
@@ -261,15 +264,20 @@ export class SimulationService {
           break;
 
         case ActionType.VIEW_COMMENTS:
-          if (action.target?.postUrl) {
+          if (action.target?.postUrl) {   
+            logger.debug(`action.target.postUrl: ${action.target.postUrl}`)
+
             const postId = this.extractPostIdFromUrl(action.target.postUrl);
             if (postId) {
               const limit = action.limit || 10;
-              const comments = await this.socialMediaService.getPostComments(postId, limit);
+                const comments = await this.socialMediaService.getPostComments(postId, limit);
               for (const comment of comments) {
-                console.log(comment.text, 'comment to process')
+                logger.debug(`comment to process: ${comment}`)
+
                 if (leadCriteria?.commentAICriteria) {
-                  const result = await this.commentMeetCriteriaAccordingToAI(comment.text, leadCriteria.commentAICriteria)
+                  const postData=await this.socialMediaService.getPost(postId)
+                  logger.debug(`postData: ${postData}`)
+                  const result = await this.commentMeetCriteriaAccordingToAI(comment.text, leadCriteria.commentAICriteria,postData.caption)
                   if (result) {
                     const userProfile = await this.socialMediaService.getUserProfile(comment.username);
                     const lead = await this.createLeadFromProfile(userProfile, 'comments', action.target.postUrl);
@@ -315,7 +323,7 @@ export class SimulationService {
                   }
                 }
               } catch (error) {
-                console.error(`Error searching hashtag ${action.target.hashtag}:`, error);
+                logger.error(`Error searching hashtag ${action.target.hashtag}:`, {error});
               }
             }
           }
@@ -378,12 +386,12 @@ export class SimulationService {
               if (Math.random() < engagementFactor && this.page) {
                 const likeButton = await this.page.$('article button svg[aria-label="Me gusta"]');
                 if (likeButton) {
-                  console.log('Dando like... 💖')
+                  logger.debug('Dando like... 💖')
                   await likeButton.click();
                 }
               }
             } catch (error) {
-              console.error('Error en acción de visualización con engagement:', error);
+              logger.error('Error en acción de visualización con engagement:', {error});
             }
           }
           break;
@@ -403,11 +411,11 @@ export class SimulationService {
           break;
       }
       this.lastActionTimestamp = Date.now();
-      //registrar la accion
       return { result: 'success', leads: leads };
-    } catch (error) {
-      console.error(`Error executing action ${action.action}:`, error);
-      return { result: 'error' };
+    } catch (error:any) {
+      logger.error(`Error executing action ${action.action}:`, {error});
+      const blockingError = error?.message?.includes('challenge_required') || error?.message?.includes('checkpoint_required') || false
+      return { result: 'error',blockingError};
     }
   }
 
@@ -447,7 +455,7 @@ export class SimulationService {
    */
   private async initBrowser(): Promise<void> {
     try {
-      console.log('Initializing browser for simulation...');
+      logger.info('Initializing browser for simulation.');
 
       // Registrar el plugin stealth
       chromium.use(stealth());
@@ -472,7 +480,7 @@ export class SimulationService {
       // Verificar si hay configuración de proxy disponible
       const proxyConfig = this.socialMediaService.getProxy();
       if (proxyConfig && proxyConfig.status === ProxyStatus.ACTIVE) {
-        console.log(`Configurando proxy para ${this.socialMediaService.getAccount().username}: ${proxyConfig.server}`);
+        logger.debug(`Configurando proxy para ${this.socialMediaService.getAccount().username}: ${proxyConfig.server}`);
 
         // Crear string de configuración de proxy
         let proxyUrl = '';
@@ -494,7 +502,7 @@ export class SimulationService {
           password: proxyConfig.password,
         };
 
-        console.log('    -- --- --- proxyConfig --> ', launchOptions.proxy)
+        logger.debug(`    -- --- --- proxyConfig --> `, launchOptions.proxy)
         this.emit('log', `Usando proxy: ${proxyConfig.server}`);
       }
 
@@ -503,7 +511,6 @@ export class SimulationService {
 
       // Crear una nueva página
       this.page = await this.browser.newContext().then(context => context.newPage());
-      console.log('Browser page created');
 
       // Configurar viewport
       if (this.page) {
@@ -522,7 +529,7 @@ export class SimulationService {
         });
 
         this.page.on('close', () => {
-          console.log('Browser closed');
+          logger.debug('Browser closed');
           this.browser?.close();
           this.browser = null;
           this.page = null;
@@ -531,9 +538,9 @@ export class SimulationService {
       }
 
 
-      console.log('Browser initialized successfully');
+      logger.debug('Browser initialized successfully');
     } catch (error) {
-      console.error('Error initializing browser:', error);
+      logger.error('Error initializing browser:', {error});
       throw error;
     }
   }
@@ -557,9 +564,9 @@ export class SimulationService {
       // Resetear contadores
       this.actionCount = 0;
 
-      console.log('Simulation resources cleaned up');
+      logger.debug('Simulation resources cleaned up');
     } catch (error) {
-      console.error('Error during cleanup:', error);
+      logger.error('Error during cleanup:', {error});
     }
   }
 
@@ -695,7 +702,7 @@ export class SimulationService {
         }
       }
     } catch (error) {
-      console.error('Error hovering on elements:', error);
+      logger.error('Error hovering on elements:', {error});
     }
   }
 
@@ -746,7 +753,7 @@ export class SimulationService {
    * Toma un descanso durante la simulación
    */
   private async takeBreak(): Promise<void> {
-    console.log('Taking a break to simulate human behavior...');
+    logger.debug('Taking a break to simulate human behavior...');
 
     // Calcular duración del descanso basada en el perfil
     const breakDuration = Math.random() *
@@ -756,7 +763,7 @@ export class SimulationService {
     // Simular un descanso
     await this.delay(breakDuration);
 
-    console.log(`Break finished after ${Math.round(breakDuration / 1000)} seconds`);
+    logger.debug(`Break finished after ${Math.round(breakDuration / 1000)} seconds`);
   }
 
   /**
@@ -767,55 +774,23 @@ export class SimulationService {
     // el tiempo desde la ultima accion
 
     const timeSinceLastAction = Date.now() - this.lastActionTimestamp;
-    console.log('timeSinceLastAction', timeSinceLastAction, this.behaviorProfile.breakDuration.max)
+    logger.debug(`timeSinceLastAction: ${timeSinceLastAction/1000}s, breakDuration max: ${this.behaviorProfile.breakDuration.max/1000}s`)
     if (timeSinceLastAction > this.behaviorProfile.breakDuration.max) {
       //Ya tuvo su break maximo
       return false;
     } else {
       const breakFrequency = this.behaviorProfile.breakFrequency;
       return this.actionCount > 0 && this.actionCount % breakFrequency === 0;
-
-
     }
-
-
   }
 
   /**
    * Calcula un retraso basado en el perfil de comportamiento y los límites específicos de la plataforma
    */
   private calculateDelay(): number {
-    // Obtener el tipo de cuenta de red social
-    const accountId = this.socialMediaAccount.id;
-    if (!accountId) {
-      // Si no hay ID de cuenta, usar los valores del perfil de comportamiento
       const minDelay = this.behaviorProfile.contentViewDuration.min;
       const maxDelay = this.behaviorProfile.contentViewDuration.max;
-      return Math.random() * (maxDelay - minDelay) + minDelay;
-    }
-
-    // Obtener el tipo de red social y sus límites específicos
-    const socialType = this.socialMediaAccount.type;
-    if (socialMediaLimits[socialType]) {
-      // Usar los intervalos de acción específicos de la plataforma
-      const { min, max } = socialMediaLimits[socialType].actionsInterval;
-
-      // Añadir variabilidad basada en el perfil de comportamiento
-      const variabilityFactor = this.behaviorProfile.interactionProbability;
-      const adjustedMin = min * (1 - variabilityFactor * 0.3);
-      const adjustedMax = max * (1 + variabilityFactor * 0.3);
-
-      // Generar retraso aleatorio con distribución gaussiana para comportamiento más natural
-      const meanDelay = (adjustedMin + adjustedMax) / 2;
-      const stdDev = (adjustedMax - adjustedMin) / 4;
-
-      return Math.max(adjustedMin, Math.min(adjustedMax, this.gaussianRandom(meanDelay, stdDev)));
-    } else {
-      // Fallback a los valores del perfil de comportamiento
-      const minDelay = this.behaviorProfile.contentViewDuration.min;
-      const maxDelay = this.behaviorProfile.contentViewDuration.max;
-      return Math.random() * (maxDelay - minDelay) + minDelay;
-    }
+      return Math.random() * (maxDelay - minDelay) + minDelay;  
   }
 
   /**
@@ -839,7 +814,10 @@ export class SimulationService {
       ActionType.HOVER_ON_ELEMENTS,
       ActionType.SCROLL_WITH_VARIABLE_SPEED,
       ActionType.START_TYPING_THEN_DELETE,
-      ActionType.VIEW_WITH_ENGAGEMENT
+      ActionType.VIEW_WITH_ENGAGEMENT,
+      ActionType.GO_TO_HOME,
+      ActionType.SCROLL_UP,
+      ActionType.SCROLL_DOWN,
     ];
 
     return actions.some(action =>
@@ -949,13 +927,15 @@ export class SimulationService {
         });
       });
     } catch (error) {
-      console.error('Error simulating view with engagement:', error);
+      logger.error('Error simulating view with engagement:', {error});
     }
   }
 
 
-  public async commentMeetCriteriaAccordingToAI(comment: string, criteria: any): Promise<boolean> {
-    const result = await this.aiAgent.analizeTextAndDetermineIfMeetCriteria(comment, criteria)
+  public async commentMeetCriteriaAccordingToAI(comment: string, criteria: any,commentDescription?:string): Promise<boolean> {
+const context=commentDescription?
+`El comentario ha sido extraído de una publicación cuya descripción es: ${commentDescription}`: undefined
+    const result = await this.aiAgent.analizeTextAndDetermineIfMeetCriteria(comment, criteria,context)
     return result
   }
 
@@ -970,7 +950,7 @@ export class SimulationService {
 
   async loginIn(withBrowser: boolean = false): Promise<void> {
     if (withBrowser) {
-      console.log('Login in browser...')
+      logger.debug('Login in browser...')
       if (!this.page) {
         await this.initBrowser();
         if (!this.page) throw new Error('No se pudo iniciar el navegador');
@@ -980,7 +960,7 @@ export class SimulationService {
         await this.socialMediaService.loginInBrowser(this.page);
         await this.socialMediaService.syncBrowserSessionWithApi(this.page);
       } else {
-        console.log('Syncing session with browser...')
+        logger.debug('Syncing session with browser.')
         await this.socialMediaService.syncSessionWithBrowser(this.page);
         await this.socialMediaService.syncBrowserSessionWithApi(this.page);
         const isLoggedIn = await this.socialMediaService.verifyLoginSuccess(this.page);
@@ -1009,7 +989,7 @@ export class SimulationService {
       }
 
       // Iniciar un navegador temporal para probar
-      console.log('Probando conexión del proxy...');
+      logger.debug('Testing proxy connection...');
 
       // Registrar el plugin stealth
       chromium.use(stealth());
@@ -1062,7 +1042,7 @@ export class SimulationService {
             country = countryMatch[1];
           }
         } catch (geoError) {
-          console.error('Error al obtener información geográfica:', geoError);
+          logger.error('Error getting geographic information', {geoError});
         }
 
         await testBrowser.close();
@@ -1081,7 +1061,7 @@ export class SimulationService {
         };
       }
     } catch (error) {
-      console.error('Error al probar la conexión del proxy:', error);
+      logger.error('Testing proxy connection failed', {error});
       return {
         success: false,
         message: `Error en la prueba de proxy: ${error instanceof Error ? error.message : String(error)}`

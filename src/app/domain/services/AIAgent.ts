@@ -11,18 +11,17 @@ export class AIAgent {
         this.aiService = aiService;
     }
 
-    public async generateActionPlan(profile: any): Promise<ActionPlan> {
+    
 
         
-    }
 
-    public async analizeTextAndDetermineIfMeetCriteria(text: string, criteria: any): Promise<boolean> {
+    public async analizeTextAndDetermineIfMeetCriteria(text: string, criteria: any,context?:string): Promise<boolean> {
         const prompt = `Eres un experto en redes sociales.
 Se te proporciona un texto y un criterio.
+El texto es: ${text}
+${context && `El contexto es: ${context}`}
 Debes determinar si el texto cumple con el siguiente criterio:
 ${JSON.stringify(criteria)}
-
-El texto es: ${text}
 
 IMPORTANTE: Responde ÚNICAMENTE con un objeto JSON válido que contenga:
 - "result": boolean

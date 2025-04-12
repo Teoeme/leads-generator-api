@@ -14,91 +14,97 @@ export enum BehaviorProfileType {
 
 // Interfaz para definir los límites por tipo de red social
 export interface SocialMediaLimits {
-  dailyActions: number;         // Número máximo de acciones por día
-  hourlyActions: number;        // Número máximo de acciones por hora
-  likesPerDay: number;          // Número máximo de "me gusta" por día
-  commentsPerDay: number;       // Número máximo de comentarios por día
-  followsPerDay: number;        // Número máximo de seguimientos por día
-  unfollowsPerDay: number;      // Número máximo de dejar de seguir por día
-  directMessagesPerDay: number; // Número máximo de mensajes directos por día
-  actionsInterval: {            // Intervalo entre acciones consecutivas (ms)
-    min: number;
-    max: number;
-  };
-  coolingPeriod: number;        // Período de enfriamiento después de alcanzar límites (horas)
+  likePost: {max:number,scoring:number};          // Número máximo de "me gusta" por día
+  commentOnPost: {max:number,scoring:number};       // Número máximo de comentarios por día
+  followUser: {max:number,scoring:number};        // Número máximo de seguimientos por día
+  unfollowUser: {max:number,scoring:number};      // Número máximo de dejar de seguir por día
+  sendMessage: {max:number,scoring:number}; // Número máximo de mensajes directos por día
+  visitProfile: {max:number,scoring:number};          // Número máximo de visitas a perfiles por día
+  searchHashtag: {max:number,scoring:number};          // Número máximo de búsquedas de hashtags por día
+  viewPost: {max:number,scoring:number};          // Número máximo de visitas a posts por día
+  viewLikes: {max:number,scoring:number};          // Número máximo de visitas a likes por día
+  viewComments: {max:number,scoring:number};          // Número máximo de visitas a comentarios por día
+  viewFollowers: {max:number,scoring:number};          // Número máximo de visitas a seguidores por día
+  viewFollowing: {max:number,scoring:number};          // Número máximo de visitas a seguidos por día
+  viewUserFromHashtag: {max:number,scoring:number};          // Número máximo de visitas a usuarios por día
 }
 
 // Límites predeterminados por tipo de red social
 export const socialMediaLimits: {[key: string]: SocialMediaLimits} = {
   INSTAGRAM: {
-    dailyActions: 500,
-    hourlyActions: 60,
-    likesPerDay: 200,
-    commentsPerDay: 50,
-    followsPerDay: 150,
-    unfollowsPerDay: 150,
-    directMessagesPerDay: 50,
-    actionsInterval: {
-      min: 5000,  // 5 segundos
-      max: 30000  // 30 segundos
-    },
-    coolingPeriod: 3 // 3 horas
+    likePost: {max:30,scoring:1},
+    commentOnPost: {max:15,scoring:2},
+    followUser: {max:5,scoring:4},
+    unfollowUser: {max:5,scoring:4},
+    visitProfile: {max:35,scoring:1},
+    sendMessage: {max:20,scoring:4},
+    searchHashtag: {max:5,scoring:1},
+    viewPost: {max:50,scoring:1},
+    viewLikes: {max:50,scoring:1},
+    viewComments: {max:50,scoring:1},
+    viewFollowers: {max:50,scoring:1},
+    viewFollowing: {max:35,scoring:1},
+    viewUserFromHashtag: {max:35,scoring:1},
   },
   LINKEDIN: {
-    dailyActions: 250,
-    hourlyActions: 30,
-    likesPerDay: 100,
-    commentsPerDay: 30,
-    followsPerDay: 50,
-    unfollowsPerDay: 50,
-    directMessagesPerDay: 40,
-    actionsInterval: {
-      min: 15000,  // 15 segundos
-      max: 60000   // 1 minuto
-    },
-    coolingPeriod: 4 // 4 horas
+    likePost: {max:100,scoring:1},
+    commentOnPost: {max:30,scoring:1},
+    followUser: {max:50,scoring:1},
+    unfollowUser: {max:50,scoring:1},
+    visitProfile: {max:20,scoring:1},
+    sendMessage: {max:40,scoring:1},  
+    searchHashtag: {max:10,scoring:1},
+    viewPost: {max:100,scoring:1},
+    viewLikes: {max:100,scoring:1},
+    viewComments: {max:100,scoring:1},
+    viewFollowers: {max:100,scoring:1},
+    viewFollowing: {max:100,scoring:1},
+    viewUserFromHashtag: {max:100,scoring:1},
   },
   FACEBOOK: {
-    dailyActions: 400,
-    hourlyActions: 50,
-    likesPerDay: 150,
-    commentsPerDay: 40,
-    followsPerDay: 100,
-    unfollowsPerDay: 100,
-    directMessagesPerDay: 50,
-    actionsInterval: {
-      min: 10000,  // 10 segundos
-      max: 45000   // 45 segundos
-    },
-    coolingPeriod: 3 // 3 horas
+    likePost: {max:150,scoring:1},
+    commentOnPost: {max:40,scoring:1},
+    followUser: {max:100,scoring:1},
+    unfollowUser: {max:100,scoring:1},
+    sendMessage: {max:50,scoring:1},
+    visitProfile: {max:20,scoring:1},
+    searchHashtag: {max:10,scoring:1},
+    viewPost: {max:100,scoring:1},
+    viewLikes: {max:100,scoring:1},
+    viewComments: {max:100,scoring:1},
+    viewFollowers: {max:100,scoring:1},
+    viewFollowing: {max:100,scoring:1},
+    viewUserFromHashtag: {max:100,scoring:1},
   },
   TWITTER: {
-    dailyActions: 600,
-    hourlyActions: 70,
-    likesPerDay: 300,
-    commentsPerDay: 100,
-    followsPerDay: 200,
-    unfollowsPerDay: 200,
-    directMessagesPerDay: 50,
-    actionsInterval: {
-      min: 5000,   // 5 segundos
-      max: 25000   // 25 segundos
-    },
-    coolingPeriod: 2 // 2 horas
+    likePost: {max:300,scoring:1},
+    commentOnPost: {max:100,scoring:1},
+    followUser: {max:200,scoring:1},
+    unfollowUser: {max:200,scoring:1},
+    sendMessage: {max:50,scoring:1},
+    visitProfile: {max:20,scoring:1},
+    searchHashtag: {max:10,scoring:1},
+    viewPost: {max:100,scoring:1},
+    viewLikes: {max:100,scoring:1},
+    viewComments: {max:100,scoring:1},
+    viewFollowers: {max:100,scoring:1},
+    viewFollowing: {max:100,scoring:1},
+    viewUserFromHashtag: {max:100,scoring:1},
   },
   TIKTOK: {
-    dailyActions: 350,
-    hourlyActions: 40,
-    likesPerDay: 200,
-    commentsPerDay: 50,
-    followsPerDay: 100,
-    unfollowsPerDay: 100,
-    directMessagesPerDay: 30,
-    actionsInterval: {
-      min: 7000,   // 7 segundos
-      max: 35000   // 35 segundos
-    },
-    coolingPeriod: 3 // 3 horas
+    likePost: {max:200,scoring:1},
+    commentOnPost: {max:50,scoring:1},
+    followUser: {max:100,scoring:1},
+    unfollowUser: {max:100,scoring:1},
+    sendMessage: {max:30,scoring:1},
+    visitProfile: {max:20,scoring:1},
+    searchHashtag: {max:10,scoring:1},
+    viewPost: {max:100,scoring:1},
+    viewLikes: {max:100,scoring:1},
+    viewComments: {max:100,scoring:1},
+    viewFollowers: {max:100,scoring:1},
+    viewFollowing: {max:100,scoring:1},
+    viewUserFromHashtag: {max:100,scoring:1},
   }
 };
 
