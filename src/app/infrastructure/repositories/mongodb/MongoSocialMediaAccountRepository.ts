@@ -14,27 +14,26 @@ export class MongoSocialMediaAccountRepository implements SocialMediaAccountRepo
     return accounts.map(account => this.mapToSocialMediaAccount(account as SocialMediaAccountDocument));
   }
 
-  async findByInstanceId(instanceId: string): Promise<SocialMediaAccount[]> {
-    const accounts = await SocialMediaAccountModel.find({ instanceId }).lean();
-    return accounts.map(account => this.mapToSocialMediaAccount(account as SocialMediaAccountDocument));
-  }
-
   async findByUserIdAndType(userId: string, type: SocialMediaType): Promise<SocialMediaAccount | null> {
     const account = await SocialMediaAccountModel.findOne({ userId, type }).lean();
     if (!account) return null;
     return this.mapToSocialMediaAccount(account as SocialMediaAccountDocument);
   }
 
-  async findByInstanceIdAndUsername(instanceId: string, username: string, type: SocialMediaType): Promise<SocialMediaAccount | null> {
-    const account = await SocialMediaAccountModel.findOne({ instanceId, username, type }).lean();
-    if (!account) return null;
-    return this.mapToSocialMediaAccount(account as SocialMediaAccountDocument);
+  async findByUsernameAndType(username: string, type: SocialMediaType): Promise<SocialMediaAccount | null> {
+    const account=await SocialMediaAccountModel.findOne({username,type})
+    if(!account) return null
+    return this.mapToSocialMediaAccount(account)
+  }
+
+  async find(): Promise<SocialMediaAccount[]> {
+    const accounts = await SocialMediaAccountModel.find().lean();
+    return accounts.map(account => this.mapToSocialMediaAccount(account as SocialMediaAccountDocument));
   }
 
   async create(account: SocialMediaAccount): Promise<SocialMediaAccount> {
     const newAccount = new SocialMediaAccountModel({
       userId: account.userId,
-      instanceId: account.instanceId,
       type: account.type,
       username: account.username,
       password: account.password,
@@ -64,7 +63,6 @@ export class MongoSocialMediaAccountRepository implements SocialMediaAccountRepo
     return {
       id: account._id.toString(),
       userId: account.userId,
-      instanceId: account.instanceId,
       type: account.type as SocialMediaType,
       username: account.username,
       password: account.password,

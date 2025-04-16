@@ -13,7 +13,7 @@ export const appConfig = {
   humanBehavior: {
     // Límites diarios de acciones por cuenta
     dailyLimits: {
-      likePost: {max:50,scoring:1},
+    likePost: {max:50,scoring:1},
     commentOnPost: {max:20,scoring:1.5},
     followUser: {max:5,scoring:3},
     unfollowUser: {max:5,scoring:1},

@@ -5,7 +5,8 @@ import { setAccounts } from '../Redux/Slices/accountsSlice'
 import { useSelector } from '../Redux/hooks'
 import { RootState } from '../Redux/store'
 import { getCookie } from './useCookies'
-import { Account } from '../entities/Account'
+import { AccountFormData } from '../Components/SocialMediaAccounts/AccountForm'
+import { addToast } from '@heroui/toast'
 
 const useAccount = () => {
 const dispatch=useDispatch()
@@ -26,7 +27,7 @@ const fetchAccounts=async()=>{
 }
 
 
-const {data}=useSWR('/api/accounts',fetchAccounts)
+const {data,mutate}=useSWR('/api/accounts',fetchAccounts)
   
 useEffect(() => {
     dispatch(setAccounts(data?.accounts))
@@ -34,38 +35,105 @@ useEffect(() => {
 
 
 
-const createAccount=async(account:Account)=>{
-  const response=await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/social-media/accounts`,{
-    method:'POST',
-    headers:{
+const createAccount=async(account:AccountFormData)=>{
+  try {
+    const response=await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/social-media/accounts`,{
+      method:'POST',
+      headers:{
       'Content-Type':'application/json',
       'Authorization':`Bearer ${token}`
     },
     body:JSON.stringify(account)
   })
-
+if(!response.ok){
+  addToast({
+    title:'Error',
+    description:response.statusText ||'Error al crear la cuenta',
+    color:'danger'
+  })
+  return
+}
   const data=await response.json()
+  addToast({
+    title:data?.ok?'Crear cuenta':'Error al crear cuenta',
+    description:data?.message,
+    color:data?.ok?'success':'danger'
+  })
+  mutate()
   return data
+  } catch (error) {
+    console.error('Error al crear la cuenta:', error);
+  }
+}
+
+  const updateAccount=async(account:AccountFormData)=>{
+    try {
+      const response=await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/social-media/accounts/${account.id}`,{
+        method:'PUT',
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':`Bearer ${token}`
+        },
+        body:JSON.stringify(account)
+      });
+      let data
+      if (!response.ok) {
+        addToast({
+          title:'Error',
+          description:response.statusText ||'Error al actualizar la cuenta',
+          color:'danger'
+        })
+        return
+      }else{
+        data=await response.json()
+      }
+
+      addToast({
+        title:data?.ok?'Editar cuenta':'Error al editar cuenta',
+        description:data?.message,
+        color:data?.ok?'success':'danger'
+      })
+      mutate()
+      return data;
+    } catch (error) {
+      console.error('Error al actualizar la cuenta:', error);
+    }
   }
 
-  const updateAccount=async(account:Account)=>{
-    const response=await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/social-media/accounts/${account.id}`,{
-      method:'PUT',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':`Bearer ${token}`
-      },
-      body:JSON.stringify(account)
-    })
-
-  const data=await response.json()
-  return data
+  const deleteAccount=async(id:string)=>{
+    try {
+      const response=await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/social-media/accounts/${id}`,{
+        method:'DELETE',
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':`Bearer ${token}`
+        }
+      })
+      if(!response.ok){
+        addToast({
+          title:'Error',
+          description:response.statusText ||'Error al eliminar la cuenta',
+          color:'danger'
+        })
+        return
+      }
+      const data=await response.json()
+      addToast({
+        title:data?.ok?'Eliminar cuenta':'Error al eliminar cuenta',
+        description:data?.message,
+        color:data?.ok?'success':'danger'
+      })
+      mutate()
+      return data
+    } catch (error) {
+      console.error('Error al eliminar la cuenta:', error);
+    }
   }
-
 return {
     accounts,
     createAccount,
-    updateAccount
+    updateAccount,
+    deleteAccount
   }
 }
 

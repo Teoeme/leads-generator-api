@@ -8,7 +8,6 @@ export interface SocialMediaAccountDocument extends Omit<SocialMediaAccount, 'id
 const SocialMediaAccountSchema = new Schema<SocialMediaAccountDocument>(
   {
     userId: { type: String, required: true, index: true },
-    instanceId: { type: String, required: true, index: true },
     type: { 
       type: String, 
       required: true, 

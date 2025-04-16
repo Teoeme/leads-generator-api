@@ -6,13 +6,12 @@ import {  Button, Table, TableBody, TableCell, TableColumn, TableHeader, TableRo
 import React, { useCallback } from 'react'
 import { FiEdit, FiPlusCircle, FiTrash} from 'react-icons/fi'
 import { useModal } from '@/app/hooks/useModal'
-import { useStateForm } from '@/app/hooks/useStateForm'
+import { confirm } from '@/app/services/confirmService'
 
 const AccountsList = () => {
 
-    const {accounts}=useAccount()
+    const {accounts,deleteAccount}=useAccount()
     const {open}=useModal({uid:'accounts-modal'})
-    const {setForm}=useStateForm({formId:'accountForm'})
 
     const columns=[
     {
@@ -59,19 +58,29 @@ switch(columnKey){
     open({
         title:'Editar cuenta',
         type:'edit',
+        formState:{
+            type:account.type,
+            username:account.username,
+            password:account?.password,
+            proxy:account?.proxy,
+            id:account.id
+        }
         
     })
-    setForm({
-        type:account.type,
-        username:account.username,
-        password:account?.password,
-        proxy:account?.proxy,
-        id:account.id
-  })
   }
 
   const handleDelete=(account:Account)=>{
     console.log('delete',account)
+    confirm({
+        title:"Eliminar cuenta",
+        content:"¿Estás seguro de querer eliminar esta cuenta?",
+        confirmationText:'Eliminar'
+    }).then(async ()=>{
+        console.log('accepted')
+        await deleteAccount(account.id!)
+    }).catch(()=>{
+        console.log('rejected')
+    })
   }
 
     return (

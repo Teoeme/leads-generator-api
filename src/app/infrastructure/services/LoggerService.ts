@@ -156,7 +156,7 @@ export class LoggerService {
     }
     
     public logInterventionComplete(interventionId: string, context: LogContext, executionTime?: number): void {
-        this.info(`Intervention completed: ${interventionId}`, {
+        this.info(`Intervention completed! 🏆`, {
             ...context,
             event: 'INTERVENTION_COMPLETE',
             executionTime

@@ -26,7 +26,6 @@ export interface ProxyAssignment {
 export interface SocialMediaAccount {
   id?: string;
   userId: string;
-  instanceId: string;
   type: SocialMediaType;
   username: string;
   password: string;

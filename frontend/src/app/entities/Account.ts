@@ -35,31 +35,31 @@ export type AccountType = { label: string, value: string, icon?: React.ReactNode
 
 export const AccountsTypeList = {
     TWITTER: {
-        value: 'twitter',
+        value: 'TWITTER',
         label: 'Twitter',
         icon: FaTwitter,
         bgStyles: 'text-white bg-gradient-to-r from-blue-500 to-purple-500'
     },
     INSTAGRAM: {
-        value: 'instagram',
+        value: 'INSTAGRAM',
         label: 'Instagram',
         icon: FaInstagram,
         bgStyles: 'text-white bg-gradient-to-r from-pink-500 to-orange-500'
     },
     FACEBOOK: {
-        value: 'facebook',
+        value: 'FACEBOOK',
         label: 'Facebook',
         icon: FaFacebook,
         bgStyles: 'text-white bg-gradient-to-r from-blue-500 to-purple-500'
     },
     TIKTOK: {
-        value: 'tiktok',
+        value: 'TIKTOK',
         label: 'TikTok',
         icon: FaTiktok,
         bgStyles: 'text-white bg-gradient-to-r from-red-500 to-orange-500'
     },
     LINKEDIN: {
-        value: 'linkedin',
+        value: 'LINKEDIN',
         label: 'LinkedIn',
         icon: FaLinkedin,
         bgStyles: 'text-white bg-gradient-to-r from-blue-500 to-purple-500'

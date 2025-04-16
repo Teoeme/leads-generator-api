@@ -12,14 +12,26 @@ export const responseCreator=(res:Response,{
     status,
     message
 }:{
-    data:any,
+    data?:any,
     status:number,
     message:string
 })=>{
-    return res.status(status).json({
-        data,
-        status,
-        message,
-        ok:status>=200 && status<300
-    });
+    if(status>=200 && status<300){
+        return res.status(status).json({
+            data:data||null,
+            status,
+            message,
+            ok:true
+        });
+    }else{
+        let response=res.status(status)
+        response.statusMessage=message;
+        response.json({
+            data:data||null,
+            status,
+            message,
+            ok:false
+        })
+        return response;
+    }
 }

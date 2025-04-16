@@ -3,7 +3,7 @@ import { Modal, ModalBody, ModalContent, ModalHeader } from '@heroui/react'
 import React from 'react'
 export interface ModalTamplateProps {
     uid: string
-    children: React.ReactNode | ((data:unknown,uid:string,title:string,type?:string)=>React.ReactNode),
+    children: React.ReactNode | ((formState:any,data:unknown,uid:string,title:string,type:'add' | 'edit'|'view',handleChange?:any)=>React.ReactNode),
     cleanOnClose?: boolean,
     backDropType?:"transparent" | "blur" | "opaque",
     onClose?: ()=>void,
@@ -12,7 +12,7 @@ export interface ModalTamplateProps {
 
 const ModalTamplate = ({ uid, children, cleanOnClose=true, backDropType='opaque',onClose,size='md' }: ModalTamplateProps) => {
 
-    const { isOpen, closeAndCleanModal, close,data,type,title } = useModal({ uid })
+    const { isOpen, closeAndCleanModal, close,data,type,title,formState,handleChange } = useModal({ uid })
 
     const handleClose=()=>{
         if(cleanOnClose){
@@ -38,7 +38,7 @@ const ModalTamplate = ({ uid, children, cleanOnClose=true, backDropType='opaque'
                         </ModalHeader>
 
                         <ModalBody>
-                            {typeof children === 'function' ? children(data,uid,title as string,type) : children}
+                            {typeof children === 'function' ? children(formState,data,uid,title as string,type,handleChange) : children}
                         </ModalBody>
 
 

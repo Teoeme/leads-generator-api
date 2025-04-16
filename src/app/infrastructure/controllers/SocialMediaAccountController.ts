@@ -1,57 +1,64 @@
 import { Request, Response } from 'express';
 import { SocialMediaAccount, SocialMediaType } from '../../domain/entities/SocialMediaAccount';
 import { MongoSocialMediaAccountRepository } from '../repositories/mongodb/MongoSocialMediaAccountRepository';
-import { appConfig } from '../config/app-config';
 import { InstagramSessionManager } from '../services/InstagramSessionManager';
+import crypto from 'crypto'
+import { responseCreator } from '../../application/utils/responseCreator';
+import fs from 'fs'
 
 export class SocialMediaAccountController {
   private accountRepository = new MongoSocialMediaAccountRepository();
   private sessionManager = InstagramSessionManager.getInstance();
 
+  private async encryptPassword(password:string):Promise<string>{
+    const encryptedPassword=crypto.privateEncrypt(fs.readFileSync('privatekey.txt'),Buffer.from(password,'utf8'))
+    return encryptedPassword.toString('base64')
+  }
+
+  private async decryptPassword(encryptedPassword:string):Promise<string>{
+    try{
+      const decryptedPassword=crypto.publicDecrypt(fs.readFileSync('publickey.txt'),Buffer.from(encryptedPassword,'base64'))
+      return decryptedPassword.toString('utf8')
+    }catch(err){
+      console.log(err,'err')
+      return ''
+    }
+  }
+
   createAccount = async (req: Request, res: Response): Promise<void> => {
     try {
       const { type, username, password } = req.body;
       const userId = (req.user as any).id;
-      const instanceId = process.env.INSTANCE_ID || 'default-instance'; // Identificador de la instancia
 
       // Validar el tipo de red social
       if (!Object.values(SocialMediaType).includes(type)) {
-        res.status(400).json({ message: 'Invalid social media type' });
+        responseCreator(res,{message:'Tipo de red social inválido',status:400})
         return;
       }
 
       // Verificar si ya existe una cuenta con ese username para esa instancia
-      const existingAccount = await this.accountRepository.findByInstanceIdAndUsername(
-        instanceId, 
+      const existingAccount = await this.accountRepository.findByUsernameAndType(
         username, 
         type as SocialMediaType
       );
-      
       if (existingAccount) {
-        res.status(400).json({ 
-          message: `An account with username ${username} already exists for ${type}` 
-        });
+        responseCreator(res,{message:`Ya existe una cuenta con el username ${username} para ${type}`,status:400})
         return;
       }
 
-      // Verificar límites de cuentas por plataforma para esta instancia
-      const instanceAccounts = await this.accountRepository.findByInstanceId(instanceId);
-      const accountsOfType = instanceAccounts.filter(account => account.type === type);
-      
-      if (accountsOfType.length >= appConfig.accountLimits[type as keyof typeof appConfig.accountLimits]) {
-        res.status(400).json({ 
-          message: `This instance has reached the maximum number of ${type} accounts (${appConfig.accountLimits[type as keyof typeof appConfig.accountLimits]})` 
-        });
-        return;
+      if(!password){
+        responseCreator(res,{message:'La contraseña es requerida',status:400})
+        return
       }
-
+      //Encriptar la contraseña
+      const encryptedPassword=await this.encryptPassword(password)
+        
       // Crear la cuenta vinculada a la instancia, no al usuario
       const account: SocialMediaAccount = {
         userId,
-        instanceId, // Vinculamos a la instancia, no solo al usuario
         type: type as SocialMediaType,
         username,
-        password,
+        password:encryptedPassword,
         isActive: true,
         createdAt: new Date()
       };
@@ -61,23 +68,19 @@ export class SocialMediaAccountController {
       // No devolver la contraseña en la respuesta
       const { password: _, ...accountWithoutPassword } = createdAccount;
 
-      res.status(201).json({
-        message: 'Social media account created successfully',
-        account: accountWithoutPassword
-      });
+      responseCreator(res,{message:'Cuenta creada correctamente',status:201,data:accountWithoutPassword})
+      return
     } catch (error) {
       console.error('Error creating social media account:', error);
-      res.status(500).json({ message: 'Server error' });
+      responseCreator(res,{message:'Error al crear la cuenta',status:500})
+      return
     }
   };
 
   getAccounts = async (req: Request, res: Response): Promise<void> => {
     try {
-      const userId = (req.user as any).id;
-      const instanceId = process.env.INSTANCE_ID || 'default-instance';
-      
       // Obtener cuentas de la instancia actual
-      const accounts = await this.accountRepository.findByInstanceId(instanceId);
+      const accounts = await this.accountRepository.find();
       
       // Filtrar información sensible
       const safeAccounts = accounts.map(account => {
@@ -96,9 +99,7 @@ export class SocialMediaAccountController {
 
   getAccount = async (req: Request, res: Response): Promise<void> => {
     try {
-      const userId = (req.user as any).id;
       const { id } = req.params;
-      const instanceId = process.env.INSTANCE_ID || 'default-instance';
 
       const account = await this.accountRepository.findById(id);
 
@@ -106,13 +107,7 @@ export class SocialMediaAccountController {
         res.status(404).json({ message: 'Account not found' });
         return;
       }
-
-      // Verificar que la cuenta pertenezca a la instancia actual
-      if (account.instanceId !== instanceId) {
-        res.status(403).json({ message: 'Unauthorized' });
-        return;
-      }
-
+ 
       // No devolver información sensible
       const { password, sessionData, ...safeAccount } = account;
 
@@ -127,10 +122,8 @@ export class SocialMediaAccountController {
 
   updateAccount = async (req: Request, res: Response): Promise<void> => {
     try {
-      const userId = (req.user as any).id;
       const { id } = req.params;
       const updateData = req.body;
-      const instanceId = process.env.INSTANCE_ID || 'default-instance';
 
       // Verificar que la cuenta exista
       const account = await this.accountRepository.findById(id);
@@ -139,15 +132,20 @@ export class SocialMediaAccountController {
         return;
       }
 
-      // Verificar que la cuenta pertenezca a la instancia actual
-      if (account.instanceId !== instanceId) {
-        res.status(403).json({ message: 'Unauthorized' });
-        return;
-      }
-
       // No permitir cambiar el tipo de cuenta o la instancia
       delete updateData.type;
-      delete updateData.instanceId;
+
+      //Si existe una contraseña nueva, encriptarla
+      if(updateData.newPassword){
+        if(!updateData.newPassword){
+          responseCreator(res,{message:'La contraseña nueva es requerida',status:400})
+          return
+        }
+        
+
+        updateData.password=await this.encryptPassword(updateData.newPassword)
+        delete updateData.newPassword
+      }
 
       // Actualizar la cuenta
       const updatedAccount = await this.accountRepository.update(id, updateData);
@@ -155,34 +153,25 @@ export class SocialMediaAccountController {
       // No devolver información sensible
       const { password, sessionData, ...safeAccount } = updatedAccount!;
 
-      res.status(200).json({
-        message: 'Account updated successfully',
-        account: safeAccount
-      });
+      responseCreator(res,{message:'Cuenta actualizada correctamente',status:200,data:safeAccount})
+      return
     } catch (error) {
-      console.error('Error updating social media account:', error);
-      res.status(500).json({ message: 'Server error' });
+      responseCreator(res,{message:'Error al actualizar la cuenta',status:500})
+      return
     }
   };
 
   deleteAccount = async (req: Request, res: Response): Promise<void> => {
     try {
-      const userId = (req.user as any).id;
       const { id } = req.params;
-      const instanceId = process.env.INSTANCE_ID || 'default-instance';
 
       // Verificar que la cuenta exista
       const account = await this.accountRepository.findById(id);
       if (!account) {
-        res.status(404).json({ message: 'Account not found' });
+        responseCreator(res,{message:'Cuenta no encontrada',status:404})
         return;
       }
-
-      // Verificar que la cuenta pertenezca a la instancia actual
-      if (account.instanceId !== instanceId) {
-        res.status(403).json({ message: 'Unauthorized' });
-        return;
-      }
+    
 
       // Cerrar sesión si es una cuenta de Instagram
       if (account.type === SocialMediaType.INSTAGRAM) {
@@ -192,35 +181,25 @@ export class SocialMediaAccountController {
       // Eliminar la cuenta
       const deleted = await this.accountRepository.delete(id);
       if (!deleted) {
-        res.status(404).json({ message: 'Account not found' });
+        responseCreator(res,{message:'Error al eliminar la cuenta',status:500})
         return;
       }
 
-      res.status(200).json({
-        message: 'Account deleted successfully'
-      });
+      responseCreator(res,{message:'Cuenta eliminada correctamente',status:200})
     } catch (error) {
-      console.error('Error deleting social media account:', error);
-      res.status(500).json({ message: 'Server error' });
+      responseCreator(res,{message:'Error al eliminar la cuenta',status:500})
+      return
     }
   };
 
   testConnection = async (req: Request, res: Response): Promise<void> => {
     try {
-      const userId = (req.user as any).id;
       const { id } = req.params;
-      const instanceId = process.env.INSTANCE_ID || 'default-instance';
 
       // Verificar que la cuenta exista
       const account = await this.accountRepository.findById(id);
       if (!account) {
         res.status(404).json({ message: 'Account not found' });
-        return;
-      }
-
-      // Verificar que la cuenta pertenezca a la instancia actual
-      if (account.instanceId !== instanceId) {
-        res.status(403).json({ message: 'Unauthorized' });
         return;
       }
 

@@ -7,17 +7,16 @@ interface Modal {
     data: unknown;
     title: string;
     type: string;
+    formState?: any;
 }
 
 // Definir la interfaz para el estado del slice
 interface ModalState {
-    modals: Modal[];
+    [key: string]: Modal;
 }
 
 // Estado inicial
-const initialState: ModalState = {
-    modals: []
-};
+const initialState: ModalState = {};
 
 export const modalSlice = createSlice({
     name: 'modals',
@@ -29,65 +28,81 @@ export const modalSlice = createSlice({
             title?: string;
             type?: string;
             preserveState?: boolean;
+            formState?: any;
         }>) => {
-            const modalIndex = state.modals.findIndex(modal => modal.uid === action.payload.uid);
-            if (modalIndex !== -1) {
+            const modalIndex = action.payload.uid;
+            if (state[modalIndex]) {
                 if (action.payload.preserveState) {
-                    state.modals[modalIndex] = {
-                        ...state.modals[modalIndex],
+                    state[modalIndex] = {
+                        ...state[modalIndex],
                         isOpen: true
                     };
                 } else {
-                    state.modals[modalIndex] = {
-                        ...state.modals[modalIndex],
+                    state[modalIndex] = {
+                        ...state[modalIndex],
                         isOpen: true,
-                        data: action.payload.data ?? state.modals[modalIndex].data,
-                        title: action.payload.title ?? state.modals[modalIndex].title,
-                        type: action.payload.type ?? state.modals[modalIndex].type,
+                        data: action.payload.data ?? state[modalIndex].data,
+                        title: action.payload.title ?? state[modalIndex].title,
+                        type: action.payload.type ?? state[modalIndex].type,
+                        formState: action.payload.formState ?? state[modalIndex].formState,
                     };
                 }
             } else {
-                state.modals.push({
+                state[action.payload.uid] = {
                     uid: action.payload.uid,
                     isOpen: true,
                     data: action.payload.data || {},
                     title: action.payload.title || '',
                     type: action.payload.type || '',
-                });
+                    formState: action.payload.formState || {},
+                };
             }
         },
         closeModal: (state, action: PayloadAction<{ uid: string }>) => {
-            const modalIndex = state.modals.findIndex(modal => modal.uid === action.payload.uid);
-            if (modalIndex !== -1) {
-                state.modals[modalIndex] = {
-                    ...state.modals[modalIndex],
+            const modalIndex =  action.payload.uid;
+            if (state[modalIndex]) {
+                state[modalIndex] = {
+                    ...state[modalIndex],
                     isOpen: false
                 };
-            }   
+            }
         },
         clearModal: (state, action: PayloadAction<{ uid: string }>) => {
-            const modalIndex = state.modals.findIndex(modal => modal.uid === action.payload.uid);
-            if (modalIndex !== -1) {
-                state.modals[modalIndex] = {
-                    ...state.modals[modalIndex],
+            const modalIndex = action.payload.uid;
+            if (state[modalIndex]) {
+                state[modalIndex] = {
+                    ...state[modalIndex],
                     data: {},
                     title: '',
                     type: '',
+                    formState: {}
                 };
             }
         },
         removeModal: (state, action: PayloadAction<{ uid: string }>) => {
-            state.modals = state.modals.filter(modal => modal.uid !== action.payload.uid);
+            delete state[action.payload.uid];
+        },
+        setFormState: (state, action: PayloadAction<{ uid: string; formState: any }>) => {
+            const modalIndex = action.payload.uid;
+            if (state[modalIndex]) {
+                state[modalIndex].formState = action.payload.formState;
+            }
+        },
+        updateFormField: (state, action: PayloadAction<{ uid: string; field: string; value: any }>) => {
+            const modalIndex = action.payload.uid;
+            if (state[modalIndex]) {
+                state[modalIndex].formState[action.payload.field] = action.payload.value;
+            }
         }
     }
 });
 
-export const { openModal, closeModal, clearModal, removeModal } = modalSlice.actions;
+export const { openModal, closeModal, clearModal, removeModal, setFormState, updateFormField } = modalSlice.actions;
 
 // Selectores
-export const selectModals = (state: { modals: ModalState }) => state.modals.modals;
+export const selectModals = (state: { modals: ModalState }) => state.modals;
 export const selectModalByUid = (uid: string) => 
     (state: { modals: ModalState }) => 
-    state.modals.modals.find(modal => modal.uid === uid);
+    state.modals[uid];
 
 export default modalSlice.reducer;

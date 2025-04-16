@@ -1,7 +1,7 @@
 import { AccountRole, AccountsTypeList, ProxyAssignment } from '@/app/entities/Account'
 import { Proxy } from '@/app/entities/Proxy'
 import { useProxy } from '@/app/hooks/useProxy'
-import { Button, Form, Input, Select, SelectItem } from '@heroui/react'
+import { Button, Form, Input, Select, SelectItem, Switch } from '@heroui/react'
 import React, { useEffect, useState } from 'react'
 
 export type AccountFormData = {
@@ -11,22 +11,25 @@ export type AccountFormData = {
     password: string
     proxy?: ProxyAssignment | null
     roles?: AccountRole[]
+    currentPassword?: string,
+    newPassword?: string,
 }
 
 export interface AccountFormProps {
+    type: 'add' | 'edit' | 'view',
     formState: AccountFormData,
     handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | {target:{name:string,value:any}}) => void,
     onSubmit: (data: AccountFormData) => void,
     onCancel?: () => void
 }
 
-const AccountForm = ({ formState, handleChange, onSubmit, onCancel }: AccountFormProps) => {
+const AccountForm = ({ type, formState, handleChange, onSubmit, onCancel }: AccountFormProps) => {
     const accountsTypeList = AccountsTypeList
     const { fetchAvailableProxies } = useProxy()
     const [availableProxies, setAvailableProxies] = useState<Proxy[]>([])
     const [selectedProxy, setSelectedProxy] = useState<string>("")
     const [proxyEnabled, setProxyEnabled] = useState<boolean>(true)
-    
+    const [changePassword, setChangePassword] = useState<boolean>(false)
     useEffect(() => {
         const loadProxies = async () => {
             const proxies = await fetchAvailableProxies()
@@ -96,7 +99,7 @@ const AccountForm = ({ formState, handleChange, onSubmit, onCancel }: AccountFor
         <Form onSubmit={handleSubmit}>
             <Select items={Object.values(accountsTypeList)} label='Social Media' name='type' onChange={handleChange} selectedKeys={[formState.type as string]}>
                 {Object.values(accountsTypeList).map((accountType) => (
-                    <SelectItem key={accountType.value} textValue={accountType.label}>
+                    <SelectItem key={accountType.value} textValue={accountType.label} >
                         <div className='flex items-center gap-2'>
                             {React.createElement(accountType.icon)}
                             {accountType.label}
@@ -113,49 +116,67 @@ const AccountForm = ({ formState, handleChange, onSubmit, onCancel }: AccountFor
                 onChange={handleChange}
             />
 
-            <Input
-                label='Password'
-                name='password'
-                placeholder='password'
-                value={formState.password as string}
-                onChange={handleChange}
-            />
+            {type==='add' && <Input 
+            label='Password'
+            name='password'
+            placeholder='password'
+            value={formState.password as string}
+            onChange={handleChange}
+            />}
+{type==='edit' && (
+    <>
+
+    <Switch name='changePassword' isSelected={changePassword} onChange={()=>{setChangePassword(pv=>!pv)
+
+        if(changePassword){
+            handleChange({target:{name:'newPassword',value:undefined}})
+        }
+    }}>
+        Cambiar contraseña
+    </Switch>
+    {changePassword && <>
+       
+        <Input
+            label='New Password'
+            name='newPassword'
+            placeholder='newPassword'
+            value={formState.newPassword as string}
+            onChange={handleChange}
+        />
+        </>}
+        </>
+)}
 
             {/* Select para proxies */}
-            <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Proxy (opcional)</label>
-                <select 
+                <Select  
+                    label='Proxy (opcional)'
                     name="proxy-select"
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={selectedProxy}
+                    selectedKeys={[selectedProxy]}
                     onChange={handleProxyChange}
+                    
                 >
-                    <option value="">Sin proxy</option>
-                    {availableProxies.map((proxy) => (
-                        <option key={proxy._id || proxy.id} value={proxy._id || proxy.id}>
-                            {`${proxy.name || ""} (${proxy.server})`}
-                        </option>
-                    ))}
-                </select>
+                    {[
+                        <SelectItem key="">Sin proxy</SelectItem>,
+                        ...availableProxies.map((proxy) => (
+                            <SelectItem key={proxy._id || proxy.id} textValue={`${proxy.name || ""} (${proxy.server})`}>
+                                {`${proxy.name || ""} (${proxy.server})`}
+                            </SelectItem>
+                        ))
+                    ]}
+                </Select>
                 
                 {selectedProxy && (
-                    <div className="mt-2">
-                        <label className="flex items-center space-x-2">
-                            <input
-                                type="checkbox"
+                            <Switch
                                 checked={proxyEnabled}
                                 onChange={handleProxyEnabledChange}
-                                className="w-4 h-4 rounded"
-                            />
-                            <span>Habilitar proxy para esta cuenta</span>
-                        </label>
-                    </div>
+                            >
+                            Habilitar proxy para esta cuenta
+                            </Switch>
                 )}
-            </div>
 
             <div className='flex justify-end gap-2 w-full'>
                 <Button color='danger' variant='light' onPress={onCancel}>Cancel</Button>
-                <Button type='submit' color='success' variant='flat'>Save</Button>
+                <Button type='submit' color='success' variant='flat'>{type==='add'?'Save':'Update'}</Button>
             </div>
         </Form>
     )
