@@ -38,7 +38,7 @@ const ModalTamplate = ({ uid, children, cleanOnClose=true, backDropType='opaque'
                         </ModalHeader>
 
                         <ModalBody>
-                            {typeof children === 'function' ? children(formState,data,uid,title as string,type,handleChange) : children}
+                            {typeof children === 'function' ? children(formState,data,uid,title as string,type as 'add' | 'edit' | 'view',handleChange) : children}
                         </ModalBody>
 
 

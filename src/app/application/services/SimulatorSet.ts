@@ -30,21 +30,21 @@ export class SimulatorSet {
             this.eventEmitter.emit('simulatorAvailable', simulator);
             console.log('Emitiendo simulador disponible desde el simulator set');
         });
+ 
+        // simulator.on('simulatorError', (simulator: SimulationService) => {
+        //     console.log('Escuchando simulador error emitido desde el simulation service',simulator.socialMediaAccount.username);
+        //     this.eventEmitter.emit('simulatorError', simulator);
+        // });
 
-        simulator.on('simulatorError', (simulator: SimulationService) => {
-            console.log('Escuchando simulador error emitido desde el simulation service',simulator.socialMediaAccount.username);
-            this.eventEmitter.emit('simulatorError', simulator);
-        });
-
-        simulator.on('interventionError', () => {
-            console.log('Escuchando intervención error emitido desde el simulation service',simulator.socialMediaAccount.id!);
-            this.eventEmitter.emit('interventionError', simulator.socialMediaAccount.id!);
-        });
+        // simulator.on('interventionError', () => {
+        //     console.log('Escuchando intervención error emitido desde el simulation service',simulator.socialMediaAccount.id!);
+        //     this.eventEmitter.emit('interventionError', simulator.socialMediaAccount.id!);
+        // });
 
         return simulator;
     }
 
-    private removeSimulator(simulator: SimulationService) {
+    removeSimulator(simulator: SimulationService) {
         if (!simulator.socialMediaAccount.id) {
             throw new Error("Simulator account id is required");
         }
@@ -52,8 +52,8 @@ export class SimulatorSet {
             throw new Error("Simulator not found");
         }
         const instance = this.simulators.get(simulator.socialMediaAccount.id);
-        if (instance) {
-            instance.stopSimulation();
+        if (instance?.isRunning) {
+            throw new Error("Simulator is running");
         }
 
         simulator.removeAllListeners();
@@ -106,7 +106,8 @@ export class SimulatorSet {
             isRunning: simulator.isRunning,
             isLoggedIn: simulator.isLoggedIn,
             account: accountData,
-            needAttention: simulator.needAttention
+            needAttention: simulator.needAttention,
+            logs: simulator.logs
         })})
     }
 

@@ -4,7 +4,7 @@ import { SocialMediaType, SocialMediaAccountRole } from "../../domain/entities/S
 import { CampainRepository } from "../../domain/repositories/CampainRepository";
 import { MongoCampainRepository } from "../../infrastructure/repositories/mongodb/MongoCampainRepository";
 import { logger, LogContext } from "../../infrastructure/services/LoggerService";
-import { SimulationService } from "./SimulationService";
+import { InterventionError, SimulationService, SimulationServiceError } from "./SimulationService";
 import { ActionType } from "../../infrastructure/simulation/actions/ActionTypes";
 import { MongoLeadRepository } from "../../infrastructure/repositories/mongodb/MongoLeadRepository";
 import { LeadRepository } from "../../domain/repositories/LeadRepository";
@@ -45,6 +45,7 @@ export interface QueueItem {
     priority: number; // 1-10, siendo 1 la más alta prioridad
     retryCount: number;
     lastRetryTime?: Date;
+    campaignId: string;
     error?: {
         type: OrchestratorErrorType;
         message: string;
@@ -143,23 +144,23 @@ export class Orchetrator {
             this.handleSimulatorAvailable(simulator);
         });
 
-        this.simulatorSet.on('interventionError', (interventionId: string) => {
-            const queueItem = this.interventionQueue.get(interventionId);
-            const logContext: LogContext = {
-                interventionId,
-                campaignId: queueItem?.intervention.campaignId,
-                simulatorId: queueItem?.simulator?.socialMediaAccount.id,
-                socialMediaType: queueItem?.socialMediaType
-            };
+        // this.simulatorSet.on('interventionError', (interventionId: string) => {
+        //     const queueItem = this.interventionQueue.get(interventionId);
+        //     const logContext: LogContext = {
+        //         interventionId,
+        //         campaignId: queueItem?.intervention.campaignId,
+        //         simulatorId: queueItem?.simulator?.socialMediaAccount.id,
+        //         socialMediaType: queueItem?.socialMediaType
+        //     };
 
-            logger.logInterventionError(
-                interventionId,
-                logContext,
-                OrchestratorErrorType.INTERVENTION_FAILED
-            );
+        //     logger.logInterventionError(
+        //         interventionId,
+        //         logContext,
+        //         OrchestratorErrorType.INTERVENTION_FAILED
+        //     );
 
-            this.handleInterventionError(interventionId, OrchestratorErrorType.INTERVENTION_FAILED);
-        });
+        //     this.handleInterventionError(interventionId, OrchestratorErrorType.INTERVENTION_FAILED);
+        // });
     }
 
     public static getInstance(): Orchetrator {
@@ -280,7 +281,8 @@ export class Orchetrator {
                                     startedAt: undefined,
                                     completedAt: undefined,
                                     executionTime: undefined
-                                }
+                                },
+                                campaignId: campaign.id!
                             });
                         }
                     }
@@ -368,6 +370,7 @@ export class Orchetrator {
                     return a.startTime.getTime() - b.startTime.getTime();
                 });
 
+
             if (pendingInterventions.length > 0) {
 
                 this.orchestratorState = 'EXECUTING';
@@ -447,9 +450,9 @@ export class Orchetrator {
                     logger.logInterventionStart(queueItem.intervention.id!, logContext);
 
                     // Ejecutar la intervención
-                    simulator.runIntervention(
+                    await simulator.runIntervention(
                         queueItem.intervention,
-                        async (leads: Lead[]) => {
+                        async (leads: Omit<Lead, 'campaignId'>[],errors?:InterventionError[]) => {
                             // Al finalizar, registrar métricas de ejecución
                             const completionTime = new Date();
                             const executionTime = completionTime.getTime() -
@@ -463,19 +466,19 @@ export class Orchetrator {
                             };
 
                             // Procesar finalización
-                            await this.handleInterventionFinish(queueItem.intervention.id!, leads);
+                            await this.handleInterventionFinish(queueItem.intervention.id!, leads?.map(lead => ({...lead, campaignId: queueItem.intervention.campaignId! || ''})),errors);
                         }
-                    ).catch(err => {
-                        logger.logInterventionError(queueItem.intervention.id!, {
+                    ).catch(async (err: SimulationServiceError) => {
+                        logger.error('Error executing intervention', {
                             event: 'INTERVENTION_ERROR',
                             errorType: OrchestratorErrorType.INTERVENTION_FAILED,
                             message: err.message
                         }, err);
-                        this.handleInterventionError(queueItem.intervention.id!, OrchestratorErrorType.INTERVENTION_FAILED, err.message);
+
+                            await this.handleInterventionError(queueItem.intervention.id!, OrchestratorErrorType.INTERVENTION_FAILED, err.message);
                     });
-
                 }
-
+            
                 logger.debug('Intervention queue executed', {
                     event: 'QUEUE_EXECUTION_COMPLETE',
                     interventionsStarted: pendingInterventions.length
@@ -572,7 +575,7 @@ export class Orchetrator {
         }
     }
 
-    private handleInterventionFinish = async (interventionId: string, leads: Lead[]) => {
+    private handleInterventionFinish = async (interventionId: string, leads: Lead[],errors?:InterventionError[]) => {
         
         try {
             const queueItem = this.interventionQueue.get(interventionId);
@@ -586,7 +589,8 @@ export class Orchetrator {
             };
            
             // Actualizar la campaña en la base de datos
-            await this.changeInterventionStatus(interventionId, InterventionStatus.COMPLETED);
+            const logMessage = `Intervencion completada con errores: ${errors?.map(error => error.message).join('\n')}` || `Intervention completed successfully`;
+            await this.changeInterventionStatus(interventionId, InterventionStatus.COMPLETED,logMessage);
 
             logger.debug('Storing leads in database', {
                 interventionId,
@@ -631,7 +635,7 @@ export class Orchetrator {
         }
     }
 
-    changeInterventionStatus = async (interventionId: string, status: InterventionStatus) => {
+    changeInterventionStatus = async (interventionId: string, status: InterventionStatus,logMessage?:string) => {
         try {
             const queueItem = this.interventionQueue.get(interventionId);
             if (!queueItem) {
@@ -660,7 +664,7 @@ export class Orchetrator {
             this.interventionQueue.set(interventionId, queueItem);
 
             // Actualizar en la base de datos
-            await this.campaignRepository.updateInterventionStatus(interventionId, status);
+            await this.campaignRepository.updateInterventionStatus(interventionId, status,logMessage);
             logger.debug(`Changing intervention status to [${status.toUpperCase()}]`, {
                 interventionId,
             });
@@ -671,6 +675,22 @@ export class Orchetrator {
             throw error;
         }
     }
+
+    addInterventionLog = async (interventionId: string, logMessage: string) => {
+        try {
+            const queueItem = this.interventionQueue.get(interventionId);
+            if (!queueItem) {
+                throw new Error('Queue item not found');
+            }
+           
+            await this.campaignRepository.addInterventionLog(interventionId, logMessage);
+        } catch (error) {
+            logger.error(`Error adding intervention log for ${interventionId}:`, {
+                event: 'ADD_INTERVENTION_LOG_ERROR'
+            }, error instanceof Error ? error : new Error(String(error)));
+        }
+    }
+    
 
     handleCampaignUpdate = async () => {
         logger.debug('--- Campaign updated detected ✅ --- ');
@@ -740,14 +760,14 @@ export class Orchetrator {
                 this.interventionQueue.set(interventionId, queueItem);
 
                 // Actualizar en base de datos
-                await this.campaignRepository.updateInterventionStatus(interventionId, InterventionStatus.PENDING);
+                await this.campaignRepository.updateInterventionStatus(interventionId, InterventionStatus.PENDING,`Falla ${queueItem.retryCount} de ${this.MAX_RETRY_COUNT} en la intervención.`);
             } else {
                 logger.error(`Intervention ${interventionId} failed after ${queueItem.retryCount} attempts`, {
                     ...logContext,
                     event: 'INTERVENTION_FAILED_FINAL'
                 });
 
-                await this.changeInterventionStatus(interventionId, InterventionStatus.FAILED);
+                await this.changeInterventionStatus(interventionId, InterventionStatus.FAILED,`Intervencion fallida después de ${queueItem.retryCount} intentos.`);
             }
         } catch (error) {
             const errorObj = error instanceof Error ? error : new Error(String(error));

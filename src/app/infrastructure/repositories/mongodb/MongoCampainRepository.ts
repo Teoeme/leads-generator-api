@@ -37,14 +37,22 @@ export class MongoCampainRepository implements CampainRepository {
         return this.mapToEntity(campain);
     }
 
-    async updateInterventionStatus(interventionId: string, status: InterventionStatus): Promise<Campain | null> {
+    async updateInterventionStatus(interventionId: string, status: InterventionStatus,logMessage?:string): Promise<Campain | null> {
         const campain = await this.campainModel.findOneAndUpdate(
             { 'interventions._id': interventionId },
-            { $set: { 'interventions.$.status': status, 'interventions.$.isBlocked': status === (InterventionStatus.RUNNING || InterventionStatus.COMPLETED) } },
+            { $set: { 'interventions.$.status': status, 'interventions.$.isBlocked': status === (InterventionStatus.RUNNING || InterventionStatus.COMPLETED)},
+            $push:{'interventions.$.logs':{timestamp:new Date(),message:logMessage || `Status changed to ${status}`}} },
             { new: true }
         );
         if(!campain) return null;
         return this.mapToEntity(campain);
+    }
+
+    async addInterventionLog(interventionId: string, logMessage: string): Promise<void> {
+        await this.campainModel.updateOne(
+            { 'interventions._id': interventionId },
+            { $push: { 'interventions.$.logs': { timestamp: new Date(), message: logMessage } } }
+        );
     }
 
     private mapToEntity(campain: any): Campain {
@@ -58,6 +66,7 @@ export class MongoCampainRepository implements CampainRepository {
                     ...action.toObject(),
                     id: action._id.toString(),
                 })),
+                logs: intervention.logs.sort((a: any, b: any) => b.timestamp - a.timestamp).slice(0, 10),
             })),
         };
     }

@@ -3,6 +3,7 @@ import { Lead, LeadStatus } from '../../domain/entities/Lead';
 import { MongoLeadRepository } from '../repositories/mongodb/MongoLeadRepository';
 import { MongoSocialMediaAccountRepository } from '../repositories/mongodb/MongoSocialMediaAccountRepository';
 import { InstagramSessionManager } from '../services/InstagramSessionManager';
+import { responseCreator } from '../../application/utils/responseCreator';
 
 export class LeadController {
   private leadRepository = new MongoLeadRepository();
@@ -17,17 +18,17 @@ export class LeadController {
       let leads: Lead[];
 
       if (status && Object.values(LeadStatus).includes(status as LeadStatus)) {
-        leads = await this.leadRepository.findByUserIdAndStatus(userId, status as LeadStatus);
+        leads = await this.leadRepository.findByStatus(status as LeadStatus);
       } else {
-        leads = await this.leadRepository.findByUserId(userId);
+        leads = await this.leadRepository.find();
       }
 
-      res.status(200).json({
-        leads
-      });
+      responseCreator(res,{message:'Leads obtenidos',status:200,data:leads})
+      return
     } catch (error) {
       console.error('Error getting leads:', error);
-      res.status(500).json({ message: 'Server error' });
+      responseCreator(res,{message:'Error al obtener leads',status:500,data:error})
+      return
     }
   };
 
@@ -57,6 +58,20 @@ export class LeadController {
       res.status(500).json({ message: 'Server error' });
     }
   };
+
+  getLeadsByCampaignId = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+
+      const leads = await this.leadRepository.findByCampaignId(id);
+responseCreator(res,{message:'Leads obtenidos',status:200,data:leads})
+return
+    } catch (error) {
+      console.error('Error getting leads by campaign id:', error);
+      responseCreator(res,{message:'Error al obtener leads',status:500,data:error})
+      return
+    }
+  }
 
   updateLead = async (req: Request, res: Response): Promise<void> => {
     try {

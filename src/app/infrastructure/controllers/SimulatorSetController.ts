@@ -9,6 +9,7 @@ import { GeminiApiService } from "../services/GeminiService";
 import { BehaviorProfileType } from "../simulation/behaviors/BehaviorProfile";
 import { MongoProxyRepository } from "../repositories/mongodb/MongoProxyRepository";
 import { SimulatorSet } from "../../application/services/SimulatorSet";
+import { responseCreator } from "../../application/utils/responseCreator";
 
 export class SimulatorSetController {
     private static instance: SimulatorSetController;
@@ -92,6 +93,18 @@ export class SimulatorSetController {
         } catch (error) {
             console.error(error);
             res.status(500).json({ error: (error as Error).message });
+        }
+    }
+
+    removeSimulator = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const {simulatorId}=req.body;
+            const simulator = this.simulatorSet.getSimulator(simulatorId);
+            if(!simulator) throw new Error("Simulator not found");
+            this.simulatorSet.removeSimulator(simulator);
+            responseCreator(res,{status:200,message:"Simulador eliminado correctamente"});
+        } catch (error:any) {
+            responseCreator(res,{status:500,message:"Error al eliminar el simulador:"+error.message});
         }
     }
 }

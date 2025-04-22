@@ -11,9 +11,11 @@ import { createElement, useState } from 'react';
 import { FiCalendar, FiEdit, FiPlusCircle, FiTrash2 } from 'react-icons/fi';
 import { MdExpandMore } from 'react-icons/md';
 import InterventionsForm from './Intervention/InterventionsForm';
+import CampaignLeadsList from './Leads/CampaignLeadsList';
 dayjs.locale('es-mx');
 
 const CampaignList = () => {
+    const [selectedTab, setSelectedTab] = useState<'leads' | 'interventions'>('interventions');
     const { campaigns } = useCampaign();
     const { open } = useModal({ uid: 'campaign-modal' });
     const { setForm } = useStateForm({ formId: 'campaign-form' });
@@ -109,8 +111,13 @@ const handleAddCampaign=()=>{
                 }}/>} isIconOnly variant='light'  onPress={()=>toggleInterventions(campaign.id || '')} />
                 </div>
                
-                <div className='w-full '>
-                <InterventionsForm interventions={campaign.interventions || []} campaignId={campaign.id || ''} />
+                <div className='w-full mt-2'>
+                    <div className='flex gap-2'>
+                        <Button color={selectedTab === 'interventions' ? 'success' : 'default'} onPress={()=>setSelectedTab('interventions')}>Intervenciones</Button>
+                        <Button color={selectedTab === 'leads' ? 'success' : 'default'} onPress={()=>setSelectedTab('leads')}>Leads</Button>
+                    </div>
+               {selectedTab === 'interventions' && <InterventionsForm interventions={campaign.interventions || []} campaignId={campaign.id || ''} />}
+               {selectedTab === 'leads' && <CampaignLeadsList campaignId={campaign.id || ''} />}
                 </div>
                 </CardFooter>
             </Card>

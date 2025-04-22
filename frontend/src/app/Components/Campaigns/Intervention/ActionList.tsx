@@ -5,7 +5,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { Button, Card, CardBody, CardHeader, Input, NumberInput, Select, SelectItem, Tooltip } from '@heroui/react'
 import React from 'react'
 import { FaTrash } from 'react-icons/fa'
-import { MdAddCircleOutline, MdInfo } from 'react-icons/md'
+import { MdAddCircleOutline, MdDragIndicator, MdInfo } from 'react-icons/md'
 import { v4 as uuidv4 } from 'uuid'
 const ActionList = ({items,handleChange}: {items: Action[],handleChange: (e: {target: {name: string, value: Action[]}}) => void}) => {
 
@@ -47,10 +47,10 @@ const ActionList = ({items,handleChange}: {items: Action[],handleChange: (e: {ta
             <Button startContent={<MdAddCircleOutline size={16}/>} color='primary' variant='light'  onPress={handleAddAction} >Acción</Button>
         </div>
 
-        <DndContext onDragEnd={handleSortEnd}>
-        <div className='flex flex-col gap-2 py-4'>
+        <DndContext onDragEnd={handleSortEnd} >
 
-    <SortableContext items={items.map(item => item.id)} strategy={verticalListSortingStrategy} >
+        <div className='flex flex-col gap-2 py-4'>
+    <SortableContext items={items.map(item => item.id)} strategy={verticalListSortingStrategy}  >
             {
                 items?.map((item:Action) => <ActionItem key={item.id} item={item} handleChange={handleChangeInAction} handleDeleteAction={handleDeleteAction} />)
             }
@@ -67,7 +67,7 @@ export default ActionList
 
 
 const ActionItem = ({item,handleChange,handleDeleteAction}: {item: Action,handleChange: (e: React.ChangeEvent<HTMLSelectElement> | any,actionId: string) => void,handleDeleteAction: (actionId: string) => void}) => {
-    const {attributes, listeners, setNodeRef, transition, transform} = useSortable({id: item.id})
+    const {listeners, setNodeRef, transition, transform, } = useSortable({id: item.id})
 
     const style = {
         transition,
@@ -75,12 +75,11 @@ const ActionItem = ({item,handleChange,handleDeleteAction}: {item: Action,handle
     }
 
     const handleChangeTarget = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>)=>{
-        console.log(e.target.name,e.target.value)
         handleChange({target:{name:'target',value:{[e.target.name]:e.target.value}}},item.id)
     }
 
 
-    const handleChangeParameter = (e: {target: {name: string, value: number}})=>{
+    const handleChangeParameter = (e: {target: {name: string, value: string | number}})=>{
         const updatedParameters = {...(item.parameters || {})}
         updatedParameters[e.target.name as keyof typeof item.parameters] = e.target.value as never
         handleChange({target:{name:'parameters',value:updatedParameters}},item.id)
@@ -91,7 +90,7 @@ const ActionItem = ({item,handleChange,handleDeleteAction}: {item: Action,handle
 const actionProps = ActionTypesProps[item.action as ActionType]
 
     return(
-    <Card key={item.id || uuidv4()} ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <Card key={item.id || uuidv4()} ref={setNodeRef} style={style}  >
         <CardHeader className='flex flex-row justify-between items-center'>
             <div className='flex flex-row gap-2 w-11/12'>
 
@@ -113,14 +112,22 @@ const actionProps = ActionTypesProps[item.action as ActionType]
                     </SelectItem>
                 ))}
             </Select>
+
                 {actionProps?.limit && <NumberInput minValue={0} className=' w-20' name='limit' label='Limit' value={item.limit} onValueChange={(value)=>handleChange({target:{name:'limit',value:value}},item.id)}/>}
                 {actionProps?.parameters &&
-                Object.keys(actionProps.parameters).map((parameter:string)=>
-                    <NumberInput className='w-36' key={parameter} name={parameter} label={parameter} value={item.parameters?.[parameter as keyof typeof item.parameters]} minValue={0} onValueChange={(value)=>handleChangeParameter({target:{name:parameter,value:value}})}/>
-                )
+                Object.keys(actionProps.parameters).map((parameter:string)=>{
+                const parameterName = parameter as string
+                const parameterValue = actionProps.parameters?.[parameterName as keyof typeof item.parameters]
+                    if(typeof parameterValue === 'string' ){
+                     return <Input key={parameter} name={parameter} label={parameter} value={item.parameters?.[parameter as keyof typeof item.parameters]}  onValueChange={(value)=>handleChangeParameter({target:{name:parameter,value:value}})}/>
+                    }else{
+                        return <NumberInput className='w-36' key={parameter} name={parameter} label={parameter} value={item.parameters?.[parameter as keyof typeof item.parameters]} minValue={0} onValueChange={(value)=>handleChangeParameter({target:{name:parameter,value:value}})}/>
+                    }
+                })
                 }
                 </div>
                 <div>
+                    <Button isIconOnly startContent={<MdDragIndicator />} variant='light' {...listeners} className=' cursor-grab active:cursor-grabbing' />
                     <Button isIconOnly startContent={<FaTrash size={16} />} color='danger' variant='light' onPress={()=>handleDeleteAction(item.id)} />
                 </div>
         </CardHeader>

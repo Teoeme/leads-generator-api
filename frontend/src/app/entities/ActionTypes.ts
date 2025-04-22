@@ -32,9 +32,12 @@ export enum ActionType {
   // Acciones de simulación de comportamiento humano
   TAKE_BREAK = 'takeBreak',
   START_TYPING_THEN_DELETE = 'startTypingThenDelete',
-  VIEW_WITH_ENGAGEMENT = 'viewWithEngagement'
+  VIEW_WITH_ENGAGEMENT = 'viewWithEngagement',
+
+  MOCKED_ACTION = 'mockedAction'
+
 }
-export const ActionTypesProps: Record<ActionType, {label: string, description: string, needBrowser: boolean, target?: string, parameters?: Record<string, string>, limit?: boolean}> = {
+export const ActionTypesProps: Record<ActionType, {label: string, description: string, needBrowser: boolean, target?: string, parameters?: Record<string, string | number>, limit?: boolean}> = {
   [ActionType.GO_TO_HOME]: {
     label: 'Ir a la página principal',
     description: 'Navega a la página principal de la plataforma',
@@ -56,7 +59,7 @@ export const ActionTypesProps: Record<ActionType, {label: string, description: s
     label: 'Desplazarse hacia abajo',
     description: 'Desplaza la página hacia abajo',
     needBrowser: true,
-    parameters:{count:'number'}
+    parameters:{count:0}
   },
   [ActionType.SCROLL_UP]: {
     label: 'Desplazarse hacia arriba',
@@ -67,12 +70,12 @@ export const ActionTypesProps: Record<ActionType, {label: string, description: s
     label: 'Poner el cursor sobre elementos',
     description: 'Pone el cursor sobre elementos de la página',
     needBrowser: true,
-    parameters:{count:'number'}
+    parameters:{count:0}
   },  
   [ActionType.SCROLL_WITH_VARIABLE_SPEED]: {
     label: 'Desplazarse con velocidad variable',
     description: 'Desplaza la página con una velocidad variable',
-    parameters:{minDistance:'number',maxDistance:'number',iterations:'number'},
+    parameters:{minDistance:0,maxDistance:0,iterations:0},
     needBrowser: true
   },  
   [ActionType.LIKE_POST]: {
@@ -149,7 +152,13 @@ export const ActionTypesProps: Record<ActionType, {label: string, description: s
     description: 'Ve un perfil con engagement. El factor de engagement por defecto es 0.5 y determina la probabilidad de dar likes.',
     needBrowser: true,
     target:'username',
-    parameters:{engagementFactor:'number',duration:'number'}
+    parameters:{engagementFactor:0.5,duration:1000}
+  },
+  [ActionType.MOCKED_ACTION]: {
+    label: 'Acción mock',
+    description: 'Acción mock',
+    needBrowser: false,
+    parameters:{actionError:''}
   }
 }
 

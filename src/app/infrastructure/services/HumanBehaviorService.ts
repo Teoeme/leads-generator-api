@@ -82,7 +82,7 @@ export class HumanBehaviorService {
     if (socialType && socialMediaLimits[socialType]) {
       // Ajustar el límite según el tipo de red social
       const socialLimits = socialMediaLimits[socialType];
-      maxActions = socialLimits[actionType as keyof SocialMediaLimits].max || null;
+      maxActions = socialLimits[actionType as keyof SocialMediaLimits]?.max || null;
     }
     const canPerform = maxActions ? currentCount <= maxActions : true;
     logger.debug(`Can perform action: [${actionType}] for account: [${accountId}] -> ${canPerform}`, {canPerform, maxActions, currentCount})
