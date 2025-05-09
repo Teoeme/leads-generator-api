@@ -21,6 +21,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+#no excluir:
+!frontend/src/app/Components/Logs
+
+
 # Directorios de caché
 .npm
 .eslintcache

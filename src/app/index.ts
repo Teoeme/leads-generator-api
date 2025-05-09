@@ -39,7 +39,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 // Database connection
 mongoose
-  .connect(config.database.url)
+  .connect(config.database.url,{dbName:'social-scrapper'})
   .then(() => {
     console.log('Connected to MongoDB');
     // Start server
