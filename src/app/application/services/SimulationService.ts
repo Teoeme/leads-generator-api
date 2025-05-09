@@ -14,6 +14,7 @@ import { AIAgent } from '../../domain/services/AIAgent';
 import { HumanBehaviorService } from '../../infrastructure/services/HumanBehaviorService';
 import { logger } from '../../infrastructure/services/LoggerService';
 import { SocialMediaService } from './SocialMediaService';
+import { SocialMediaAccountRepository } from '../../domain/repositories/SocialMediaAccountRepository';
 
 export interface SimulationServiceError extends Error {
   type: 'simulatorError' | 'interventionError';
@@ -66,6 +67,8 @@ export class SimulationService {
   private eventEmitter: EventEmitter = new EventEmitter();
   private lastActionTimestamp: number = 0;
   private _needAttention: boolean = false;
+  private _accountRepository: SocialMediaAccountRepository
+
   private _logs:{
     timestamp:number,
     message:string,
@@ -84,11 +87,13 @@ export class SimulationService {
     profileType: BehaviorProfileType = BehaviorProfileType.CASUAL,
     socialMediaService: SocialMediaService,
     aiAgent: AIAgent,
+    accountRepository: SocialMediaAccountRepository
   ) {
     this.humanBehaviorService = HumanBehaviorService.getInstance();
     this.socialMediaService = socialMediaService;
     this.behaviorProfile = behaviorProfiles[profileType];
     this.aiAgent = aiAgent;
+    this._accountRepository = accountRepository;
 
     // Registrar el tipo de cuenta en el servicio de comportamiento humano
     const account = this.socialMediaService.getAccount();
@@ -201,6 +206,12 @@ export class SimulationService {
         logger.error('Error al iniciar sesión:', {error});
         throw new SimulatorError('Error in login', this.socialMediaService.getAccount().id, true);
       }
+    }else if(isLoggedIn && !this.page){
+      await this.initBrowser();
+    }
+
+    if(needsBrowser && isMockedLogin){
+      await this.initBrowser();
     }
 
     for (const action of actions) {
@@ -399,7 +410,12 @@ export class SimulationService {
 
         case ActionType.GO_TO_HOME:
           if (this.page) {
-            await this.socialMediaService.goToHome(this.page);
+            const targetUrl = action.parameters?.targetUrl;
+            if(targetUrl){
+              await this.page.goto(targetUrl);
+            }else{
+              await this.socialMediaService.goToHome(this.page);
+            }
             await this.simulateViewingContent();
           }
           break;
@@ -446,16 +462,30 @@ export class SimulationService {
                 await this.page.goto(action.target.postUrl);
               }
 
+              logger.debug(`Simulating view with engagement for ${action.parameters?.duration} seconds`,{
+                action:action.action,
+                target:action.target,
+                duration:action.parameters?.duration,
+                engagementFactor:action.parameters?.engagementFactor,
+                username:action.target?.username,
+                postUrl:action.target?.postUrl,
+              })
+
               // Simular comportamiento de visualización con engagement
-              await this.simulateViewWithEngagement(action.parameters?.duration || 10000);
+              await this.simulateViewWithEngagement(action.parameters?.duration * 1000 || 10000);
 
               // Posibilidad de dar like basado en el factor de engagement
               const engagementFactor = action.parameters?.engagementFactor || 0.5;
-              if (Math.random() < engagementFactor && this.page) {
-                const likeButton = await this.page.$('article button svg[aria-label="Me gusta"]');
-                if (likeButton) {
+              const random = Math.random();
+              logger.debug(`Random: ${random}`)
+              if (random < engagementFactor && this.page) {
+                const likeButtonSvg = await this.page.$('article div[role="button"] svg[aria-label="Me gusta"]'); 
+                console.log(likeButtonSvg,'likeButtonSvg')
+                if(likeButtonSvg){
+                  const likeButton = (await likeButtonSvg.evaluateHandle(node => node.closest('div[role="button"]'))).asElement();
+                  console.log(likeButton,'likeButton')
+                  await likeButton?.click();
                   logger.debug('Dando like... 💖')
-                  await likeButton.click();
                 }
               }
             } catch (error) {
@@ -609,6 +639,7 @@ export class SimulationService {
           this.browser?.close();
           this.browser = null;
           this.page = null;
+          this.saveSessionDataToAccount(this.socialMediaService.getAccount().sessionData);
         });
 
       }
@@ -738,7 +769,7 @@ export class SimulationService {
       }, scrollDistance);
 
       // Pausa entre scrolls
-      await this.delay(Math.random() * 1000 + 500);
+      await this.delay(Math.random() * 1000 + 1000);
     }
   }
 
@@ -1012,7 +1043,7 @@ const context=commentDescription?
   }
 
 
-  async loginIn(withBrowser: boolean = false): Promise<void> {
+  async loginIn(withBrowser: boolean = false): Promise<void> { 
     if (withBrowser) {
       logger.debug('Login in browser...')
       if (!this.page) {
@@ -1020,9 +1051,10 @@ const context=commentDescription?
         if (!this.page) throw new Error('No se pudo iniciar el navegador');
       }
 
-      if (!this.socialMediaService.getAccount().sessionData) {
+      if (!this.socialMediaService.getAccount().sessionData) { 
         await this.socialMediaService.loginInBrowser(this.page);
         await this.socialMediaService.syncBrowserSessionWithApi(this.page);
+        await this.saveSessionDataToAccount(this.socialMediaService.getAccount().sessionData);
       } else {
         logger.debug('Syncing session with browser.')
         await this.socialMediaService.syncSessionWithBrowser(this.page);
@@ -1133,7 +1165,18 @@ const context=commentDescription?
     }
   }
 
+  private async saveSessionDataToAccount(sessionData: any): Promise<void> {
+    logger.debug('Saving session data to account.')
+    const account = this.socialMediaService.getAccount();
+    await this._accountRepository.update(account.id!,{sessionData});
+  }
 
+  private async getSessionDataFromAccount(): Promise<any> {
+    const account = this.socialMediaService.getAccount();
+    let res= await this._accountRepository.findById(account.id!);
+    if(!res) throw new Error('Session data not found');
+    return res?.sessionData;
+  }
 
 
 

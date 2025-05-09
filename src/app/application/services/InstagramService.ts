@@ -17,9 +17,9 @@ export class InstagramService extends SocialMediaService {
     }
     this.ig = new IgApiClient();
     
-    if (account.sessionData) {
-      this._loggedIn = true;
-    }
+    // if (account.sessionData) {
+    //   this._loggedIn = true;
+    // }
 
   }
 
@@ -78,7 +78,7 @@ export class InstagramService extends SocialMediaService {
 
       // Guardar datos de sesión
       const serialized = await this.ig.state.serialize();
-      this.getAccount().sessionData = serialized;
+      this.setAccountSessionData(serialized);
       
       this._loggedIn = true;
       return true;
@@ -184,7 +184,7 @@ export class InstagramService extends SocialMediaService {
       // Instagram API doesn't have a direct logout method
       // We'll just clear the session
       this._loggedIn = false;
-      this.getAccount().sessionData = null;
+      this.setAccountSessionData(null);
       return true;
     } catch (error) {
       console.error('Instagram logout error:', error);
@@ -897,7 +897,7 @@ async goToHome(page:Page): Promise<void>{
         });
         
         // Actualizar la sesión en la cuenta
-        this.getAccount().sessionData = sessionData;
+        this.setAccountSessionData(sessionData);
         
         // Marcar la API como logueada y configurar el estado
         this.setLoggedIn(true);

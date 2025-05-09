@@ -1,8 +1,9 @@
-import { ProxyAssignment, SocialMediaAccount } from '../../domain/entities/SocialMediaAccount';
+import { SocialMediaAccount } from '../../domain/entities/SocialMediaAccount';
 import { Lead } from '../../domain/entities/Lead';
 import { Post } from '../../domain/services/SocialMediaService';
 import { Page } from 'playwright';
 import { ProxyConfiguration } from '../../domain/entities/Proxy/ProxyConfiguration';
+import { MongoSocialMediaAccountRepository } from '../../infrastructure/repositories/mongodb/MongoSocialMediaAccountRepository';
 
 export interface UserProfile {
   id: string;
@@ -38,6 +39,10 @@ export abstract class SocialMediaService {
 
   public getAccount(): SocialMediaAccount {
     return this._account;
+  }
+
+  public setAccountSessionData(sessionData: any): void {
+    this._account.sessionData = sessionData;
   }
 
 

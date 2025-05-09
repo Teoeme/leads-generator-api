@@ -1,0 +1,50 @@
+name: publish
+
+on:
+  push:
+    branches: ['production']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.3
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Deploy to server
+      run: |
+        ssh -o StrictHostKeyChecking=no root@149.50.134.250 -p5439 << 'EOF'
+          cd /root/leads-generator-api
+          source ~/.nvm/nvm.sh
+          git fetch origin production
+          git reset --hard origin/production
+
+          # iniciamos el backend
+          npm install --force
+          npm run build
+          #Revisamos si pm2 tiene un proceso con el nombre leads-generator-api-backend, si lo tiene lo reiniciamos, si no lo creamos
+          if pm2 list | grep "leads-generator-api-backend" > /dev/null; then
+            pm2 restart leads-generator-api-backend
+          else
+            pm2 start npm --name "leads-generator-api-backend" -- run start
+          fi
+          
+        # Iniciamos el frontend
+        cd /root/leads-generator-api/frontend
+        npm install --force
+        npm run build
+        #nuevamente revisamos si existe el proceso en pm2
+        if pm2 list | grep "leads-generator-api-frontend" > /dev/null; then
+          pm2 restart leads-generator-api-frontend
+        else
+          pm2 start npm --name "leads-generator-api-frontend" -- run start
+        fi
+
+
+        EOF

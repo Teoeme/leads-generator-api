@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "dotenv -e .env.development next dev --turbopack --port $PORT",
     "build": "next build",
-    "start": "next start -p 3001",
+    "start": "dotenv -e .env next start",
     "lint": "next lint"
   },
   "dependencies": {
@@ -42,6 +42,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^16.4.5",
     "eslint": "^9",
     "eslint-config-next": "15.2.3",
     "tailwindcss-animate": "^1.0.7",

@@ -2,12 +2,12 @@ import { AccountsTypeList } from '@/app/entities/Account';
 import { Simulator } from '@/app/entities/Simulator';
 import { useSimulatorSet } from '@/app/hooks/useSimulatorSet';
 import { Button, Card, Chip, Spinner } from '@heroui/react';
-import { createElement, useState } from 'react';
-import { FaRegStopCircle } from 'react-icons/fa';
-import { FiChevronDown, FiTrash } from 'react-icons/fi';
-import { MdHistory, MdKeyOff, MdOutlineKey } from "react-icons/md";
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { createElement, useState } from 'react';
+import { FaRegStopCircle } from 'react-icons/fa';
+import { FiTrash } from 'react-icons/fi';
+import { MdHistory, MdKeyOff, MdOutlineKey } from "react-icons/md";
 dayjs.extend(relativeTime);
 
 const SimulatorList = () => {

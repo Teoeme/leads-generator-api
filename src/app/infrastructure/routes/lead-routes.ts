@@ -17,8 +17,4 @@ router.delete('/:id', authenticate, leadController.deleteLead);
 router.put('/:id/status', authenticate, leadController.updateLeadStatus);
 router.get('/search/:query', authenticate, leadController.searchLeads);
 
-// Rutas para extracción de leads
-router.post('/extract/instagram/followers', authenticate, leadController.extractLeadsFromFollowers);
-router.post('/extract/instagram/likes', authenticate, leadController.extractLeadsFromLikes);
-
 export default router; 

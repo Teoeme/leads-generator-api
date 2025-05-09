@@ -13,25 +13,25 @@ export enum ActionType {
   SCROLL_DOWN = 'scrollDown',
   SCROLL_UP = 'scrollUp',
   HOVER_ON_ELEMENTS = 'hoverOnElements',
-  SCROLL_WITH_VARIABLE_SPEED = 'scrollWithVariableSpeed',
+  // SCROLL_WITH_VARIABLE_SPEED = 'scrollWithVariableSpeed',
   
   // Acciones de interacción
-  LIKE_POST = 'likePost',
-  COMMENT_ON_POST = 'commentOnPost',
-  FOLLOW_USER = 'followUser',
-  UNFOLLOW_USER = 'unfollowUser',
-  SEND_MESSAGE = 'sendMessage',
+  // LIKE_POST = 'likePost',
+  // COMMENT_ON_POST = 'commentOnPost',
+  // FOLLOW_USER = 'followUser',
+  // UNFOLLOW_USER = 'unfollowUser',
+  // SEND_MESSAGE = 'sendMessage',
   
   // Acciones de recolección de datos
   SEARCH_HASHTAG = 'searchHashtag',
   VIEW_LIKES = 'viewLikes',
   VIEW_COMMENTS = 'viewComments',
-  VIEW_FOLLOWERS = 'viewFollowers',
-  VIEW_FOLLOWING = 'viewFollowing',
+  // VIEW_FOLLOWERS = 'viewFollowers',
+  // VIEW_FOLLOWING = 'viewFollowing',
   
   // Acciones de simulación de comportamiento humano
   TAKE_BREAK = 'takeBreak',
-  START_TYPING_THEN_DELETE = 'startTypingThenDelete',
+  // START_TYPING_THEN_DELETE = 'startTypingThenDelete',
   VIEW_WITH_ENGAGEMENT = 'viewWithEngagement',
 
   MOCKED_ACTION = 'mockedAction'
@@ -42,6 +42,7 @@ export const ActionTypesProps: Record<ActionType, {label: string, description: s
     label: 'Ir a la página principal',
     description: 'Navega a la página principal de la plataforma',
     needBrowser: true,
+    parameters:{targetUrl:''}
   },
   [ActionType.VISIT_PROFILE]: {
     label: 'Visitar perfil',
@@ -72,37 +73,37 @@ export const ActionTypesProps: Record<ActionType, {label: string, description: s
     needBrowser: true,
     parameters:{count:0}
   },  
-  [ActionType.SCROLL_WITH_VARIABLE_SPEED]: {
-    label: 'Desplazarse con velocidad variable',
-    description: 'Desplaza la página con una velocidad variable',
-    parameters:{minDistance:0,maxDistance:0,iterations:0},
-    needBrowser: true
-  },  
-  [ActionType.LIKE_POST]: {
-    label: 'Dar like a una publicación',
-    description: 'Da like a una publicación de un usuario',
-    needBrowser: true
-  },  
-  [ActionType.COMMENT_ON_POST]: {
-    label: 'Comentar en una publicación',
-    description: 'Comenta en una publicación de un usuario',
-    needBrowser: true
-  },    
-  [ActionType.FOLLOW_USER]: {
-    label: 'Seguir a un usuario',
-    description: 'Sigue a un usuario',
-    needBrowser: true
-  },  
-  [ActionType.UNFOLLOW_USER]: {
-    label: 'Dejar de seguir a un usuario',
-    description: 'Deja de seguir a un usuario',
-    needBrowser: true
-  },  
-  [ActionType.SEND_MESSAGE]: { 
-    label: 'Enviar un mensaje', 
-    description: 'Envía un mensaje a un usuario',
-    needBrowser: true
-  },  
+  // [ActionType.SCROLL_WITH_VARIABLE_SPEED]: {
+  //   label: 'Desplazarse con velocidad variable',
+  //   description: 'Desplaza la página con una velocidad variable',
+  //   parameters:{minDistance:0,maxDistance:0,iterations:0},
+  //   needBrowser: true
+  // },  
+  // [ActionType.LIKE_POST]: {
+  //   label: 'Dar like a una publicación',
+  //   description: 'Da like a una publicación de un usuario',
+  //   needBrowser: true
+  // },  
+  // [ActionType.COMMENT_ON_POST]: {
+  //   label: 'Comentar en una publicación',
+  //   description: 'Comenta en una publicación de un usuario',
+  //   needBrowser: true
+  // },    
+  // [ActionType.FOLLOW_USER]: {
+  //   label: 'Seguir a un usuario',
+  //   description: 'Sigue a un usuario',
+  //   needBrowser: true
+  // },  
+  // [ActionType.UNFOLLOW_USER]: {
+  //   label: 'Dejar de seguir a un usuario',
+  //   description: 'Deja de seguir a un usuario',
+  //   needBrowser: true
+  // },  
+  // [ActionType.SEND_MESSAGE]: { 
+  //   label: 'Enviar un mensaje', 
+  //   description: 'Envía un mensaje a un usuario',
+  //   needBrowser: true
+  // },  
   [ActionType.SEARCH_HASHTAG]: {
     label: 'Buscar un hashtag',
     description: 'Busca un hashtag en la plataforma y busca leads entre los usuarios que publican posts con ese hashtag. El limit por defecto es 10',
@@ -125,28 +126,29 @@ export const ActionTypesProps: Record<ActionType, {label: string, description: s
     target:'postUrl',
     limit:true
   },  
-  [ActionType.VIEW_FOLLOWERS]: {
-    label: 'Ver seguidores de un usuario',
-    description: 'Ve los seguidores de un usuario',
-    needBrowser: true
-  },  
-  [ActionType.VIEW_FOLLOWING]: {
-    label: 'Ver usuarios seguidos por un usuario',
-    description: 'Ve los usuarios seguidos por un usuario',
-    needBrowser: true
-  },  
+  // [ActionType.VIEW_FOLLOWERS]: {
+  //   label: 'Ver seguidores de un usuario',
+  //   description: 'Ve los seguidores de un usuario',
+  //   needBrowser: true
+  // },  
+  // [ActionType.VIEW_FOLLOWING]: {
+  //   label: 'Ver usuarios seguidos por un usuario',
+  //   description: 'Ve los usuarios seguidos por un usuario',
+  //   needBrowser: true
+  // },  
 
   [ActionType.TAKE_BREAK]: {
     label: 'Tomar un descanso',
-    description: 'Toma un descanso',
-    needBrowser: false
+    description: 'Tomar un descanso antes de continuar con la siguiente acción. El tiempo de descanso se define en segundos.',
+    needBrowser: false,
+    parameters:{duration:0}
   },  
-  [ActionType.START_TYPING_THEN_DELETE]: {
-    label: 'Escribir y borrar',
-    description: 'Escribe y borra el texto definido, sobre el campo configurado.',
-    needBrowser: true,
-    parameters:{selector:'string',text:'string'}
-  },  
+  // [ActionType.START_TYPING_THEN_DELETE]: {
+  //   label: 'Escribir y borrar',
+  //   description: 'Escribe y borra el texto definido, sobre el campo configurado.',
+  //   needBrowser: true,
+  //   parameters:{selector:'string',text:'string'}
+  // },  
   [ActionType.VIEW_WITH_ENGAGEMENT]: {
     label: 'Ver perfil con engagement',
     description: 'Ve un perfil con engagement. El factor de engagement por defecto es 0.5 y determina la probabilidad de dar likes.',
