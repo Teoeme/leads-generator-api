@@ -1,7 +1,13 @@
 import dotenv from 'dotenv';
 import { StringValue } from 'ms';
 
-dotenv.config();
+
+//Si estamos en desarrollo, usamos el archivo .env.development
+if (process.env.NODE_ENV === 'development') {
+  dotenv.config({ path: '.env.development' });
+} else {
+  dotenv.config();
+}
 
 export default {
   server: {

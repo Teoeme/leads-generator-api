@@ -16,6 +16,13 @@ export enum InterventionStatus {
     RUNNING = "RUNNING",
     COMPLETED = "COMPLETED",
     FAILED = "FAILED",
+    PLANNING = "PLANNING",
+}
+
+export interface InterventionLog {
+    timestamp:string,
+    message:string,
+
 }
 
 export interface Intervention {
@@ -27,5 +34,7 @@ export interface Intervention {
     autoStart:boolean,
     startDate:string,
     description?:string,
-    isBlocked?:boolean
+    isBlocked?:boolean,
+    logs:InterventionLog[]
+
 }

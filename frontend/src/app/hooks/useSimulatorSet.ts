@@ -1,9 +1,11 @@
 import useSWR from "swr";
 import { getCookie } from "./useCookies";
 import { useState, useEffect } from "react";
+import { addToast } from "@heroui/toast";
+import { Simulator } from "../entities/Simulator";
 export const useSimulatorSet = () => {
 const token=getCookie('token');
-const [simulators,setSimulators]=useState([]);
+const [simulators,setSimulators]=useState<Simulator[]>([]);
 
     const getSimulators = async () => {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/simulatorsset/list`,{
@@ -20,7 +22,7 @@ const [simulators,setSimulators]=useState([]);
     }
 
 
-    const {data}=useSWR('/api/simulatorsset/list',getSimulators);
+    const {data,mutate}=useSWR('/api/simulatorsset/list',getSimulators);
 
     useEffect(() => {
         if(data){
@@ -39,6 +41,7 @@ const [simulators,setSimulators]=useState([]);
         });
         const data = await response.json();
         if(response.ok){
+            mutate();
             return data;
         }else{
             throw new Error(data.error);
@@ -61,5 +64,29 @@ const [simulators,setSimulators]=useState([]);
             throw new Error(data.error);
         }
     }
-    return { simulators, addSimulator, login };
+
+    const removeSimulator = async (simulatorId:string) => {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/simulatorsset/remove`,{
+            method: 'POST',
+            body: JSON.stringify({simulatorId}),
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(res=>res.json())
+    
+        if(response){
+            addToast({
+                title: 'Eliminar simulador',
+                description: response?.message,
+                color: response?.ok ? 'success' : 'danger',
+            })
+            mutate();
+        }
+        return response;
+    }
+
+
+    return { simulators, addSimulator, login, removeSimulator };
 }

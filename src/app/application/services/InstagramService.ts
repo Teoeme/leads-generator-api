@@ -17,9 +17,9 @@ export class InstagramService extends SocialMediaService {
     }
     this.ig = new IgApiClient();
     
-    if (account.sessionData) {
-      this._loggedIn = true;
-    }
+    // if (account.sessionData) {
+    //   this._loggedIn = true;
+    // }
 
   }
 
@@ -78,7 +78,7 @@ export class InstagramService extends SocialMediaService {
 
       // Guardar datos de sesión
       const serialized = await this.ig.state.serialize();
-      this.getAccount().sessionData = serialized;
+      this.setAccountSessionData(serialized);
       
       this._loggedIn = true;
       return true;
@@ -184,7 +184,7 @@ export class InstagramService extends SocialMediaService {
       // Instagram API doesn't have a direct logout method
       // We'll just clear the session
       this._loggedIn = false;
-      this.getAccount().sessionData = null;
+      this.setAccountSessionData(null);
       return true;
     } catch (error) {
       console.error('Instagram logout error:', error);
@@ -343,7 +343,7 @@ async goToHome(page:Page): Promise<void>{
     return result.users.slice(0, limit).map(this.mapToUserProfile);
   }
 
-  async extractLeadsFromFollowers(username: string, limit: number = 50): Promise<Lead[]> {
+  async extractLeadsFromFollowers(username: string, limit: number = 50): Promise<Omit<Lead, 'campaignId'>[]> {
     if (!this.loggedIn) {
       throw new Error('Not logged in');
     }
@@ -352,7 +352,7 @@ async goToHome(page:Page): Promise<void>{
       const user = await this.ig.user.searchExact(username);
       const followersFeed = this.ig.feed.accountFollowers(user.pk);
       
-      const leads: Lead[] = [];
+      const leads: Omit<Lead, 'campaignId'>[] = [];
       let items = [];
       let count = 0;
       
@@ -373,7 +373,7 @@ async goToHome(page:Page): Promise<void>{
             // this.humanBehavior.trackAction(this.getAccount().id!, ActionType.VISIT_PROFILE);
             
             // Crear lead
-            const lead: Lead = {
+            const lead: Omit<Lead, 'campaignId'> = {
               userId: this.getAccount().userId,
               socialMediaType: SocialMediaType.INSTAGRAM,
               socialMediaId: follower.pk.toString(),
@@ -388,7 +388,9 @@ async goToHome(page:Page): Promise<void>{
               isVerified: userInfo.is_verified,
               status: LeadStatus.NEW,
               source: 'followers',
-              sourceUrl: `https://instagram.com/${username}`
+              sourceUrl: `https://instagram.com/${username}`,
+
+
             };
             
             leads.push(lead);
@@ -412,7 +414,7 @@ async goToHome(page:Page): Promise<void>{
     }
   }
 
-  async extractLeadsFromLikes(postId: string, limit: number = 50): Promise<Lead[]> {
+  async extractLeadsFromLikes(postId: string, limit: number = 50): Promise<Omit<Lead, 'campaignId'>[]> {
     const likers = await this.getPostLikes(postId, limit);
     return likers.map(liker => this.mapToLead(liker));
   }
@@ -461,7 +463,7 @@ async goToHome(page:Page): Promise<void>{
     };
   }
 
-  private mapToLead(profile: UserProfile): Lead {
+  private mapToLead(profile: UserProfile): Omit<Lead, 'campaignId'> {
     return {
       userId: this.getAccount().userId,
       socialMediaType: SocialMediaType.INSTAGRAM,
@@ -895,7 +897,7 @@ async goToHome(page:Page): Promise<void>{
         });
         
         // Actualizar la sesión en la cuenta
-        this.getAccount().sessionData = sessionData;
+        this.setAccountSessionData(sessionData);
         
         // Marcar la API como logueada y configurar el estado
         this.setLoggedIn(true);

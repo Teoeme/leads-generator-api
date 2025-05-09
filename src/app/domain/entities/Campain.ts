@@ -13,9 +13,16 @@ export interface Campain {
 }
 
 export enum CampainStatus {
+    PLANNING = "PLANNING",
     RUNNING = "RUNNING",
     COMPLETED = "COMPLETED",
     PAUSED = "PAUSED"
+}
+
+export interface InterventionLog {
+    timestamp:string,
+    message:string,
+
 }
 
 export interface Intervention {
@@ -29,6 +36,7 @@ export interface Intervention {
     startDate?: Date;
     description?: string;
     isBlocked?: boolean;
+    logs: InterventionLog[];
 }
 
 export enum InterventionStatus {
@@ -36,6 +44,7 @@ export enum InterventionStatus {
     RUNNING = "RUNNING",
     COMPLETED = "COMPLETED",
     FAILED = "FAILED",
+    PLANNING = "PLANNING"
 }
 
 export interface LeadCriteria {

@@ -10,18 +10,18 @@ export class MongoLeadRepository implements LeadRepository {
     return this.mapToLead(lead as LeadDocument);
   }
 
-  async findByUserId(userId: string): Promise<Lead[]> {
-    const leads = await LeadModel.find({ userId }).lean();
+  async find(filter?:any): Promise<Lead[]> {
+    const leads = await LeadModel.find(filter).lean();
     return leads.map(lead => this.mapToLead(lead as LeadDocument));
   }
 
-  async findByUserIdAndStatus(userId: string, status: LeadStatus): Promise<Lead[]> {
-    const leads = await LeadModel.find({ userId, status }).lean();
+  async findByStatus( status: LeadStatus): Promise<Lead[]> {
+    const leads = await LeadModel.find({ status }).lean();
     return leads.map(lead => this.mapToLead(lead as LeadDocument));
   }
 
-  async findByUserIdAndSocialMediaId(userId: string, socialMediaId: string): Promise<Lead | null> {
-    const lead = await LeadModel.findOne({ userId, socialMediaId }).lean();
+  async findBySocialMediaId(socialMediaId: string): Promise<Lead | null> {
+    const lead = await LeadModel.findOne({ socialMediaId }).lean();
     if (!lead) return null;
     return this.mapToLead(lead as LeadDocument);
   }
@@ -55,7 +55,7 @@ export class MongoLeadRepository implements LeadRepository {
     const leadsToAdd = []
 
     for (const lead of leads) {
-      const alreadyExists = await this.findByUserIdAndSocialMediaId(lead.userId, lead.socialMediaId);
+      const alreadyExists = await this.findBySocialMediaId(lead.socialMediaId);
       if (alreadyExists){
         await this.update(alreadyExists.id!, lead);
       }else{
@@ -67,8 +67,8 @@ export class MongoLeadRepository implements LeadRepository {
     return newLeads.map(lead => this.mapToLead(lead as LeadDocument));
   }
 
-  async findByUserIdAndSocialMediaType(userId: string, type: SocialMediaType): Promise<Lead[]> {
-    const leads = await LeadModel.find({ userId, socialMediaType: type }).lean();
+  async findBySocialMediaType(type: SocialMediaType): Promise<Lead[]> {
+    const leads = await LeadModel.find({ socialMediaType: type }).lean();
     return leads.map(lead => this.mapToLead(lead as LeadDocument));
   }
 
@@ -115,12 +115,19 @@ export class MongoLeadRepository implements LeadRepository {
     return leads.map(lead => this.mapToLead(lead as LeadDocument));
   }
 
+
+  async findByCampaignId(campaignId: string): Promise<Lead[]> {
+    const leads = await LeadModel.find({ campaignId }).lean();
+    return leads.map(lead => this.mapToLead(lead as LeadDocument));
+  }
+
   private mapToLead(lead: LeadDocument | any): Lead {
     return {
       id: lead._id.toString(),
       userId: lead.userId,
       socialMediaType: lead.socialMediaType,
       socialMediaId: lead.socialMediaId,
+      campaignId: lead.campaignId,
       username: lead.username,
       fullName: lead.fullName,
       profileUrl: lead.profileUrl,

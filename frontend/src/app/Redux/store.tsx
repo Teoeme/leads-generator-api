@@ -5,7 +5,7 @@ import modalSlice  from './Slices/modalSlice';
 import formSlice from './Slices/formSlice';
 import campaignsSlice from './Slices/campaignSlice';
 import proxySlice from './Slices/proxySlice';
-
+import leadSlice from './Slices/leadSlice';
 export const store = configureStore({
   reducer: {
     user: userSlice,
@@ -13,7 +13,8 @@ export const store = configureStore({
     modals: modalSlice,
     forms: formSlice,
     campaigns: campaignsSlice,
-    proxy: proxySlice
+    proxy: proxySlice,
+    leads: leadSlice
   },
 });
 

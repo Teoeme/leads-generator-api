@@ -7,6 +7,6 @@ export interface CampainRepository {
     updateCampain(id: string, campain: Partial<Campain>): Promise<Campain | null>;
     deleteCampain(id: string): Promise<boolean>;
     getCampains(filters?: Partial<Campain>): Promise<Campain[]>;
-    updateInterventionStatus(interventionId: string, status: InterventionStatus): Promise<Campain | null>;
-
+    updateInterventionStatus(interventionId: string, status: InterventionStatus,logMessage?:string): Promise<Campain | null>;
+    addInterventionLog(interventionId: string, logMessage: string): Promise<void>;
 }

@@ -12,6 +12,7 @@ const InterventionsForm = ({ interventions, campaignId }: { interventions: Inter
   const { open } = useModal({ uid: 'intervention-modal' })
   const { setForm } = useStateForm({ formId: 'intervention-form' })
   const [showCompleted, setShowCompleted] = useState(false)
+
   const handleAddIntervention = () => {
     open({ title: 'Nueva Intervención', type: 'add', data: { campaignId } })
     setForm({
@@ -41,6 +42,7 @@ const InterventionsForm = ({ interventions, campaignId }: { interventions: Inter
   const handleDeleteIntervention = (intervention: Intervention) => {
     console.log(intervention, ' delete')
   }
+  
 
   return (
     <div className='flex flex-col gap-2'>
@@ -55,9 +57,9 @@ const InterventionsForm = ({ interventions, campaignId }: { interventions: Inter
         </span>
       </div>
 
-      <div className='flex flex-col gap-3 h-[55vh] overflow-auto'>
+      <div className='flex flex-col gap-3 min-h-[40vh] max-h-[55vh] overflow-auto'>
         {[...interventions].filter((intervention)=>!showCompleted ? intervention.status !== InterventionStatus.COMPLETED : true).sort((a,b)=>new Date(a.startDate).getTime()-new Date(b.startDate).getTime()).map((intervention: Intervention) => (
-          <InterventionItem intervention={intervention} key={intervention.id} handleEdit={handleEditIntervention} handleDelete={handleDeleteIntervention} />
+          <InterventionItem campaignId={campaignId} intervention={intervention} key={intervention.id} handleEdit={handleEditIntervention} handleDelete={handleDeleteIntervention} />
         ))}
       </div>
     </div>

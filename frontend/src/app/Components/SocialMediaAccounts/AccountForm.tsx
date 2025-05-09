@@ -174,9 +174,20 @@ const AccountForm = ({ type, formState, handleChange, onSubmit, onCancel }: Acco
                             </Switch>
                 )}
 
-            <div className='flex justify-end gap-2 w-full'>
-                <Button color='danger' variant='light' onPress={onCancel}>Cancel</Button>
-                <Button type='submit' color='success' variant='flat'>{type==='add'?'Save':'Update'}</Button>
+                <Select label='Roles' name='roles' selectedKeys={[...(formState.roles || [])]} selectionMode='multiple' onSelectionChange={(e)=>{
+                    handleChange({target:{name:'roles',value:Array.from(e)}})
+
+}}>
+                    {Object.values(AccountRole).map((role) => (
+                        <SelectItem key={role} textValue={role}>
+                            {role}
+                        </SelectItem>
+                    ))}
+                </Select>
+
+            <div className='flex justify-end gap-2 w-full py-2'>
+                <Button color='danger' variant='light' onPress={onCancel}>Cancelar</Button>
+                <Button type='submit' color='success' variant='flat'>{type==='add'?'Guardar':'Actualizar'}</Button>
             </div>
         </Form>
     )

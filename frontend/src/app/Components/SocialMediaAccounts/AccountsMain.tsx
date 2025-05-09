@@ -8,7 +8,7 @@ const AccountsMain = () => {
 
   return (
     <div>
-      <div className='p-4'>
+      <div className='p-4 '>
     <AccountsList/>
       </div>
     <SimulatorList/>

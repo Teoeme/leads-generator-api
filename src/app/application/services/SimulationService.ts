@@ -3,17 +3,55 @@ import { chromium } from 'playwright-extra';
 import stealth from 'puppeteer-extra-plugin-stealth';
 import { Lead, LeadStatus } from '../../domain/entities/Lead';
 import { SocialMediaAccount, SocialMediaType } from '../../domain/entities/SocialMediaAccount';
-import { Action, ActionPlan, ActionType, TimeDistribution, TimePattern } from '../../infrastructure/simulation/actions/ActionTypes';
-import { BehaviorProfile, BehaviorProfileType, behaviorProfiles, socialMediaLimits } from '../../infrastructure/simulation/behaviors/BehaviorProfile';
+import { Action, ActionType } from '../../infrastructure/simulation/actions/ActionTypes';
+import { BehaviorProfile, BehaviorProfileType, behaviorProfiles } from '../../infrastructure/simulation/behaviors/BehaviorProfile';
 // @ts-ignore
 import { urlSegmentToInstagramId } from 'instagram-id-to-url-segment';
+import EventEmitter from 'events';
 import { Intervention, LeadCriteria } from '../../domain/entities/Campain';
+import { ProxyStatus } from '../../domain/entities/Proxy/ProxyConfiguration';
 import { AIAgent } from '../../domain/services/AIAgent';
 import { HumanBehaviorService } from '../../infrastructure/services/HumanBehaviorService';
-import { SocialMediaService } from './SocialMediaService';
-import EventEmitter from 'events';
-import { ProxyStatus } from '../../domain/entities/Proxy/ProxyConfiguration';
 import { logger } from '../../infrastructure/services/LoggerService';
+import { SocialMediaService } from './SocialMediaService';
+import { SocialMediaAccountRepository } from '../../domain/repositories/SocialMediaAccountRepository';
+
+export interface SimulationServiceError extends Error {
+  type: 'simulatorError' | 'interventionError';
+  interventionId?: string;
+  simulatorId?: string;
+  message: string;
+  isBlocking?: boolean;
+}
+
+export class SimulatorError extends Error implements SimulationServiceError {
+    type: 'simulatorError' = 'simulatorError';
+    simulatorId?: string;
+    isBlocking?: boolean;
+
+    constructor(message: string, simulatorId?: string, isBlocking: boolean = false) {
+        super(message);
+        this.name = 'SimulatorError';
+        this.simulatorId = simulatorId;
+        this.isBlocking = isBlocking;
+    }
+}
+
+export class InterventionError extends Error implements SimulationServiceError {
+    type: 'interventionError' = 'interventionError';
+    interventionId?: string;
+    simulatorId?: string;
+    isBlocking?: boolean;
+
+    constructor(message: string, interventionId?: string, simulatorId?: string, isBlocking: boolean = false) {
+        super(message);
+        this.name = 'InterventionError';
+        this.interventionId = interventionId;
+        this.simulatorId = simulatorId;
+        this.isBlocking = isBlocking;
+    }
+}
+
 
 export class SimulationService {
   private browser: Browser | null = null;
@@ -29,6 +67,12 @@ export class SimulationService {
   private eventEmitter: EventEmitter = new EventEmitter();
   private lastActionTimestamp: number = 0;
   private _needAttention: boolean = false;
+  private _accountRepository: SocialMediaAccountRepository
+
+  private _logs:{
+    timestamp:number,
+    message:string,
+  }[] = [];
 
   private  ProfileBaseUrl ={
     [SocialMediaType.INSTAGRAM]: 'https://instagram.com/',
@@ -43,11 +87,13 @@ export class SimulationService {
     profileType: BehaviorProfileType = BehaviorProfileType.CASUAL,
     socialMediaService: SocialMediaService,
     aiAgent: AIAgent,
+    accountRepository: SocialMediaAccountRepository
   ) {
     this.humanBehaviorService = HumanBehaviorService.getInstance();
     this.socialMediaService = socialMediaService;
     this.behaviorProfile = behaviorProfiles[profileType];
     this.aiAgent = aiAgent;
+    this._accountRepository = accountRepository;
 
     // Registrar el tipo de cuenta en el servicio de comportamiento humano
     const account = this.socialMediaService.getAccount();
@@ -107,6 +153,17 @@ export class SimulationService {
   }
 
 
+  get logs() {
+    return this._logs.sort((a,b)=>b.timestamp-a.timestamp).slice(0,10);
+  }
+
+  addLog(message:string) {
+    this._logs.push({
+      timestamp:Date.now(),
+      message:message
+    });
+  }
+
   /**
    * Detiene la simulación en curso
    */
@@ -124,33 +181,37 @@ export class SimulationService {
     await this.cleanup();
   }
 
-  public async runIntervention(intervention: Intervention, onFinish?: (leads: Lead[]) => Promise<void>) {
+  
+  public async runIntervention(intervention: Intervention, onFinish?: (leads: Omit<Lead, 'campaignId'>[],errors?:InterventionError[]) => Promise<void>) {
     const actions = intervention.actions;
-
-
     logger.debug(`Running intervention: ${intervention.id}`);
     this._isRunning = true;
     this.actionCount = 0;
-    const collectedLeads: Lead[] = [];
-
+    const collectedLeads: Omit<Lead, 'campaignId'>[] = [];
+    const errors:InterventionError[] = [];
+    
     const needsBrowser = this.requiresBrowser(actions);
     logger.debug(`Intervention needs browser: ${needsBrowser}`);
-
+    
     const isLoggedIn = this.socialMediaService.loggedIn;
     logger.debug(`Intervention is logged-in: ${isLoggedIn}`);
-
-    if (!isLoggedIn) {
+    
+      
+      //hay que mockear el loggin para acciones de mock
+      const isMockedLogin = intervention.actions.some(action => action.action === ActionType.MOCKED_ACTION);
+      if (!isLoggedIn && !isMockedLogin) {
       try {
         await this.loginIn(needsBrowser);
       } catch (error) {
         logger.error('Error al iniciar sesión:', {error});
-        this.emit('log', `Error al iniciar sesión: ${error}`);
-        this._isRunning = false;
-        this.emit('interventionError', 'Error in login');
-        this.emit('simulatorError', this);
-        this.needAttention = true;
-        return;
+        throw new SimulatorError('Error in login', this.socialMediaService.getAccount().id, true);
       }
+    }else if(isLoggedIn && !this.page){
+      await this.initBrowser();
+    }
+
+    if(needsBrowser && isMockedLogin){
+      await this.initBrowser();
     }
 
     for (const action of actions) {
@@ -158,18 +219,25 @@ export class SimulationService {
       if (!this.humanBehaviorService.isActiveHour()) {
         const delayToNextActiveHour = this.humanBehaviorService.getSecondsToNextActiveHour();
         logger.debug(`No es hora activa. Proxima hora: ${new Date(Date.now() + delayToNextActiveHour * 1000).toLocaleTimeString()}`)
-        this.emit('log', `No es hora activa. Proxima hora: ${new Date(Date.now() + delayToNextActiveHour * 1000).toLocaleTimeString()}`)
         await this.delay(delayToNextActiveHour * 1000)
       }
 
       if (this.shouldTakeBreak()) {
         logger.debug('Tomando descanso ----- ⏰')
-        this.emit('log', `Tomando descanso ----- ⏰`)
         await this.takeBreak();
       }
 
       // Ejecutar la acción
-      const { result, leads, timeToWait, blockingError } = await this.executeAction(action, intervention.leadCriteria);
+
+      const { result, leads, timeToWait, blockingError,message } = await this.executeAction(action, intervention.leadCriteria);
+      logger.debug(`Execute action result: ${result}`,{
+        action:action.action,
+        leads:leads,
+        timeToWait:timeToWait,
+        blockingError:blockingError,
+        message:message
+      })
+
       if (result === 'success' && leads && leads.length > 0) {
         logger.debug('Leads recolectados:', leads)
         collectedLeads.push(...leads);
@@ -179,41 +247,52 @@ export class SimulationService {
         //Reintentar la acción
         await this.executeAction(action, intervention.leadCriteria);
       } else if (result === 'error') {
-        logger.error(`Error al ejecutar la acción: ${action.action}`, {blockingError})
+        logger.error(`Error al ejecutar la acción: ${action.action}`, {blockingError,message})
+
         if(blockingError){
-          this.emit('simulatorError', this);
+          console.log('Blocking error.......🤡🤡🤡🤡')
+          this._isRunning = false;
           this.needAttention = true;
-          logger.error('Blocking error. Stopping simulation...   🤡🤡🤡🤡🤡🤡🤡')
-          throw new Error('Blocking error. Stopping simulation...');
+          this.addLog(`🤡 Blocking error. Stopping simulation...🤡`);
+          await this.delay(1000);
+          this.addLog(`${message}`);
+          throw new SimulatorError('🤡 Blocking error. Stopping simulation...🤡', this.socialMediaService.getAccount().id, true);
+        }else{
+          //Permitimos que se ejecuten las acciones siguientes
+          errors.push(new InterventionError(message || 'Non-blocking error. Intervention will continue', intervention.id, this.socialMediaService.getAccount().id,false));
+          logger.debug(`Non-blocking error. Intervention will continue: ${action.action}`)
         }
       }
 
       // Incrementar contador de acciones
       this.actionCount++;
+
       //registrar la accion
       this.humanBehaviorService.trackAction(this.socialMediaAccount.id!, action.action);
+
       await this.delay(this.calculateDelay());
-
-
     }
 
-
-    await onFinish?.(collectedLeads);
+    await onFinish?.(collectedLeads,errors);
     this._isRunning = false;
+    this.addLog(`Simulation finished`);
     this.emit('simulatorAvailable', this);
-  return
+    return
+
+
+ 
   }
 
   /**
    * Ejecuta una acción específica
    */
-  private async executeAction(action: Action, leadCriteria?: LeadCriteria): Promise<{ result: 'success' | 'error' | 'needToWait', leads?: Lead[], timeToWait?: number, blockingError?: boolean }> {
+  private async executeAction(action: Action, leadCriteria?: LeadCriteria): Promise<{ result: 'success' | 'error' | 'needToWait', leads?: Omit<Lead, 'campaignId'>[], timeToWait?: number, blockingError?: boolean,message?:string }> {
     logger.debug(`Ejecutando acción: ${action.action}`)
 
     const canPerformAction = this.humanBehaviorService.canPerformAction(this.socialMediaService.getAccount().id!, action.action);
     if (!canPerformAction.canPerform) return { result: canPerformAction.status, timeToWait: canPerformAction.secondsToReset };
 
-    const leads: Lead[] = [];
+    const leads: Omit<Lead, 'campaignId'>[] = [];
 
     try {
       switch (action.action) {
@@ -331,7 +410,12 @@ export class SimulationService {
 
         case ActionType.GO_TO_HOME:
           if (this.page) {
-            await this.socialMediaService.goToHome(this.page);
+            const targetUrl = action.parameters?.targetUrl;
+            if(targetUrl){
+              await this.page.goto(targetUrl);
+            }else{
+              await this.socialMediaService.goToHome(this.page);
+            }
             await this.simulateViewingContent();
           }
           break;
@@ -378,16 +462,30 @@ export class SimulationService {
                 await this.page.goto(action.target.postUrl);
               }
 
+              logger.debug(`Simulating view with engagement for ${action.parameters?.duration} seconds`,{
+                action:action.action,
+                target:action.target,
+                duration:action.parameters?.duration,
+                engagementFactor:action.parameters?.engagementFactor,
+                username:action.target?.username,
+                postUrl:action.target?.postUrl,
+              })
+
               // Simular comportamiento de visualización con engagement
-              await this.simulateViewWithEngagement(action.parameters?.duration || 10000);
+              await this.simulateViewWithEngagement(action.parameters?.duration * 1000 || 10000);
 
               // Posibilidad de dar like basado en el factor de engagement
               const engagementFactor = action.parameters?.engagementFactor || 0.5;
-              if (Math.random() < engagementFactor && this.page) {
-                const likeButton = await this.page.$('article button svg[aria-label="Me gusta"]');
-                if (likeButton) {
+              const random = Math.random();
+              logger.debug(`Random: ${random}`)
+              if (random < engagementFactor && this.page) {
+                const likeButtonSvg = await this.page.$('article div[role="button"] svg[aria-label="Me gusta"]'); 
+                console.log(likeButtonSvg,'likeButtonSvg')
+                if(likeButtonSvg){
+                  const likeButton = (await likeButtonSvg.evaluateHandle(node => node.closest('div[role="button"]'))).asElement();
+                  console.log(likeButton,'likeButton')
+                  await likeButton?.click();
                   logger.debug('Dando like... 💖')
-                  await likeButton.click();
                 }
               }
             } catch (error) {
@@ -409,24 +507,32 @@ export class SimulationService {
             await this.scrollWithVariableSpeed(minDistance, maxDistance, iterations);
           }
           break;
-      }
+
+          case ActionType.MOCKED_ACTION:
+            logger.debug(`Mocked action: ${action.action}`)
+            if(action?.parameters?.actionError){
+              throw new Error(action.parameters.actionError)
+            }            
+
+            break;
+          }
       this.lastActionTimestamp = Date.now();
       return { result: 'success', leads: leads };
     } catch (error:any) {
       logger.error(`Error executing action ${action.action}:`, {error});
       const blockingError = error?.message?.includes('challenge_required') || error?.message?.includes('checkpoint_required') || false
-      return { result: 'error',blockingError};
+      return { result: 'error',blockingError,message:error.message};
     }
   }
 
   /**
    * Crea un objeto Lead a partir de un perfil de usuario
    */
-  private createLeadFromProfile(profile: any, source: string, sourceDetail: string): Lead {
+  private createLeadFromProfile(profile: any, source: string, sourceDetail: string): Omit<Lead, 'campaignId'> {
     if (!profile) throw new Error('Profile is required');
 
     // Crear un nuevo lead a partir del perfil
-    const lead: Lead = {
+    const lead: Omit<Lead, 'campaignId'> = {
       userId: this.socialMediaService.getAccount().id!,
       socialMediaType: this.socialMediaService.getAccount().type,
       socialMediaId: profile.id,
@@ -533,6 +639,7 @@ export class SimulationService {
           this.browser?.close();
           this.browser = null;
           this.page = null;
+          this.saveSessionDataToAccount(this.socialMediaService.getAccount().sessionData);
         });
 
       }
@@ -662,7 +769,7 @@ export class SimulationService {
       }, scrollDistance);
 
       // Pausa entre scrolls
-      await this.delay(Math.random() * 1000 + 500);
+      await this.delay(Math.random() * 1000 + 1000);
     }
   }
 
@@ -791,18 +898,6 @@ export class SimulationService {
       const minDelay = this.behaviorProfile.contentViewDuration.min;
       const maxDelay = this.behaviorProfile.contentViewDuration.max;
       return Math.random() * (maxDelay - minDelay) + minDelay;  
-  }
-
-  /**
-   * Genera un número aleatorio con distribución gaussiana
-   */
-  private gaussianRandom(mean: number, stdDev: number): number {
-    let u = 0, v = 0;
-    while (u === 0) u = Math.random();
-    while (v === 0) v = Math.random();
-
-    const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
-    return z * stdDev + mean;
   }
 
 
@@ -948,7 +1043,7 @@ const context=commentDescription?
   }
 
 
-  async loginIn(withBrowser: boolean = false): Promise<void> {
+  async loginIn(withBrowser: boolean = false): Promise<void> { 
     if (withBrowser) {
       logger.debug('Login in browser...')
       if (!this.page) {
@@ -956,9 +1051,10 @@ const context=commentDescription?
         if (!this.page) throw new Error('No se pudo iniciar el navegador');
       }
 
-      if (!this.socialMediaService.getAccount().sessionData) {
+      if (!this.socialMediaService.getAccount().sessionData) { 
         await this.socialMediaService.loginInBrowser(this.page);
         await this.socialMediaService.syncBrowserSessionWithApi(this.page);
+        await this.saveSessionDataToAccount(this.socialMediaService.getAccount().sessionData);
       } else {
         logger.debug('Syncing session with browser.')
         await this.socialMediaService.syncSessionWithBrowser(this.page);
@@ -1069,7 +1165,18 @@ const context=commentDescription?
     }
   }
 
+  private async saveSessionDataToAccount(sessionData: any): Promise<void> {
+    logger.debug('Saving session data to account.')
+    const account = this.socialMediaService.getAccount();
+    await this._accountRepository.update(account.id!,{sessionData});
+  }
 
+  private async getSessionDataFromAccount(): Promise<any> {
+    const account = this.socialMediaService.getAccount();
+    let res= await this._accountRepository.findById(account.id!);
+    if(!res) throw new Error('Session data not found');
+    return res?.sessionData;
+  }
 
 
 

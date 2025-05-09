@@ -31,7 +31,6 @@ export const useStateForm = ({ formId, initialState = {} }: UseStateFormProps) =
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | {target: {name: string, value:any ,type?: string}}
   ) => {
     const { name, value, type } = event.target;
-    console.log(name,value,type,'event change')
     let newValue: FormFieldValue;
 
     if (type === 'checkbox') {

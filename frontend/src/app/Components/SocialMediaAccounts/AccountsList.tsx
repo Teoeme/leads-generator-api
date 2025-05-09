@@ -1,58 +1,21 @@
 
 'use client'
-import { Account, AccountsTypeList } from '@/app/entities/Account'
+import { Account, AccountRole, AccountsTypeList } from '@/app/entities/Account'
+import { Simulator } from '@/app/entities/Simulator'
 import useAccount from '@/app/hooks/useAccount'
-import {  Button, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from '@heroui/react'
-import React, { useCallback } from 'react'
-import { FiEdit, FiPlusCircle, FiTrash} from 'react-icons/fi'
 import { useModal } from '@/app/hooks/useModal'
+import { useSimulatorSet } from '@/app/hooks/useSimulatorSet'
 import { confirm } from '@/app/services/confirmService'
+import { Button, Card, Chip, Tooltip } from '@heroui/react'
+import React from 'react'
+import { FiEdit, FiPlusCircle, FiTrash } from 'react-icons/fi'
+import { MdAddToQueue } from 'react-icons/md'
 
 const AccountsList = () => {
 
     const {accounts,deleteAccount}=useAccount()
+    const {addSimulator,simulators}=useSimulatorSet()
     const {open}=useModal({uid:'accounts-modal'})
-
-    const columns=[
-    {
-        key:'id',
-        label:'ID'
-    },
-    {
-        key:'username',
-        label:'Username'
-    },
-    {
-        key:'type',
-        label:'Type',
-        render: (account:Account)=> <span>{AccountsTypeList[account.type as keyof typeof AccountsTypeList].label}</span>
-    },
-    {
-        key:'actions',
-        label:'Actions',
-    }
-  ]
-
-  const renderCell= useCallback((account:Account,columnKey:string)=>{
-const cellValue=account[columnKey as keyof Account];
-
-switch(columnKey){
-    case 'type':
-        return <span className='flex items-center gap-2'>{React.createElement(AccountsTypeList[cellValue as keyof typeof AccountsTypeList].icon)} {AccountsTypeList[cellValue as keyof typeof AccountsTypeList]?.label}</span>
-    
-    case 'actions':
-        return <span className='flex items-center gap-2'>
-            <Button color='warning' variant='light' isIconOnly startContent={<FiEdit size={18}/>} onPress={()=>{handleEdit(account)}}></Button>
-            <Button color='danger' variant='light' isIconOnly startContent={<FiTrash size={18}/>} onPress={()=>{handleDelete(account)}}></Button>
-        </span>
-
-        default:
-        return cellValue
-}
-
-  },[])
-
-
 
   const handleEdit=(account:Account)=>{
     open({
@@ -63,7 +26,8 @@ switch(columnKey){
             username:account.username,
             password:account?.password,
             proxy:account?.proxy,
-            id:account.id
+            id:account.id,
+            roles:account.roles
         }
         
     })
@@ -83,38 +47,59 @@ switch(columnKey){
     })
   }
 
-    return (
-    <Table topContent={<AccountsTableHeader/>}>        
-        <TableHeader columns={columns}>
-{(column)=> <TableColumn key={column.key}>{column.label}</TableColumn>}
-        </TableHeader>
-        <TableBody items={accounts ?? []}>
-            {(account)=> <TableRow>
-                {(columnKey)=> <TableCell>{renderCell(account,columnKey as string) as React.ReactNode}</TableCell>}
-
-                </TableRow>}
-
-        </TableBody>    
-    </Table>
-)
+  const handleAdd=()=>{
+    open({
+        title:'Agregar cuenta',
+        type:'add',
+        formState:{
+            roles:[AccountRole.SCRAPPING],
+            type:'INSTAGRAM'
+        }
+        
+    })
 }
 
-const AccountsTableHeader=()=>{
-    const {open}=useModal({uid:'accounts-modal'})
-
-    const handleAdd=()=>{
-        open({
-            title:'Agregar cuenta',
-            type:'add',
-            
-        })
-    }
     return (
-        <div className='flex justify-between items-center'>
-            <h2>Cuentas de Social Media</h2>
-            <Button color='success' variant='faded' startContent={<FiPlusCircle size={18}/>} onPress={handleAdd}>Agregar cuenta</Button>
+<div className='flex flex-col gap-2 max-h-[45vh]  pb-4 overflow-auto relative'>
+    <div className='flex justify-between items-center pb-4'>
+    <h2 className='text-xl font-bold'>Cuentas de Social Media</h2>
+    <Button color='success' variant='faded' startContent={<FiPlusCircle size={18}/>} onPress={handleAdd}>Agregar cuenta</Button>
+    </div>
+
+        <Card className='flex items-center gap-2 flex-row p-4 text-xs py-5 shadow sticky top-0 left-0 right-0 z-10'>
+            <p className=' w-48'>ID</p>
+            <p className='w-72'>Username</p>
+            <p className='w-32'>Type</p>
+            <p className='w-60'>Roles</p>
+            <p className='flex-1 text-right'>Actions</p>
+        </Card>
+        <div className='flex flex-col gap-2'>
+            {
+                accounts?.map((account)=>{
+                    const isSimulator=simulators.some((simulator:Simulator)=> simulator.id===account.id)
+
+                    return(
+                        <div key={account.id} className='flex items-center gap-2 flex-row px-4 py-2'>
+                            <p className=' w-48 text-[10px]'>{account.id}</p>
+                            <p className=' w-72 text-sm'>{account.username}</p>
+                            <span className='flex items-center gap-2 w-32'>{React.createElement(AccountsTypeList[account.type as keyof typeof AccountsTypeList].icon)} {AccountsTypeList[account.type as keyof typeof AccountsTypeList]?.label}</span>
+                            <div className='w-60 flex flex-row flex-wrap gap-2'>{account.roles?.map((role:AccountRole)=> <Chip  key={role}>{role}</Chip>)}</div>
+                            <span className='flex items-center gap-0 justify-end flex-1'>
+                                <Button color='warning' variant='light' isIconOnly startContent={<FiEdit size={18}/>} onPress={()=>{handleEdit(account)}}></Button>
+                                <Button color='danger' variant='light' isIconOnly startContent={<FiTrash size={18}/>} onPress={()=>{handleDelete(account)}}></Button>
+                                <Tooltip content={isSimulator ? 'Cuenta ya agregada a un simulador' : 'Agregar cuenta al simulador'}>
+                         <Button color='success' variant='light' isIconOnly startContent={<MdAddToQueue size={18}/>} onPress={()=>{addSimulator({accountId:account.id!})}} isDisabled={isSimulator}></Button>
+                                </Tooltip>
+
+                            </span>
+                        </div>
+                    )
+                })
+            }
+
         </div>
-    )
+</div>
+)
 }
 
 export default AccountsList

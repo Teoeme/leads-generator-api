@@ -28,6 +28,10 @@ const ActionSchema = new Schema({
     target: { type: TargetSchema, required: false },
 },{id:false,timestamps:false});    
 
+const InterventionLogSchema = new Schema({
+    timestamp: { type: Date, required: true, default: new Date() },
+    message: { type: String, required: true },
+},{_id:false,timestamps:false});
 
 
 export const InterventionSchema = new Schema({
@@ -39,6 +43,7 @@ export const InterventionSchema = new Schema({
     startDate: { type: Date, required: true, default: new Date() },
     description: { type: String, required: false },
     isBlocked: { type: Boolean, required: false, default: false },
+    logs: { type: [InterventionLogSchema], required: false, default: [] },
 
 });
 

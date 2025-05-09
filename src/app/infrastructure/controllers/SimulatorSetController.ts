@@ -9,6 +9,9 @@ import { GeminiApiService } from "../services/GeminiService";
 import { BehaviorProfileType } from "../simulation/behaviors/BehaviorProfile";
 import { MongoProxyRepository } from "../repositories/mongodb/MongoProxyRepository";
 import { SimulatorSet } from "../../application/services/SimulatorSet";
+import { responseCreator } from "../../application/utils/responseCreator";
+import crypto from 'crypto'
+import fs from 'fs'
 
 export class SimulatorSetController {
     private static instance: SimulatorSetController;
@@ -40,6 +43,16 @@ export class SimulatorSetController {
     }
 
 
+    private async decryptPassword(encryptedPassword:string):Promise<string>{
+        try{
+          const decryptedPassword=crypto.publicDecrypt(fs.readFileSync('publickey.txt'),Buffer.from(encryptedPassword,'base64'))
+          return decryptedPassword.toString('utf8')
+        }catch(err){
+          console.log(err,'err')
+          return ''
+        }
+      }
+
     addSimulator = async (req: Request, res: Response): Promise<void> => {
         try {
             const {accountId,profileType}=req.body;
@@ -48,10 +61,14 @@ export class SimulatorSetController {
         const proxy = await this.proxyRepository.getProxyById(account?.proxy?.proxyId || '');
         if(!account) throw new Error("Account not found");
 
+        //Desencriptar contraseña
+        const decryptedPassword = await this.decryptPassword(account.password);
+        console.log(decryptedPassword,'decryptedPassword');
+
         let socialMediaService: SocialMediaService;
         switch(account.type){
           case SocialMediaType.INSTAGRAM:
-            socialMediaService = new InstagramService(account,proxy ?? null);
+            socialMediaService = new InstagramService({...account,password:decryptedPassword},proxy ?? null);
             break;
           default:
             throw new Error('Invalid account type');
@@ -64,9 +81,10 @@ export class SimulatorSetController {
         });
         // Crear e iniciar el servicio de simulación
         const simulationService = new SimulationService(
-          profileType || BehaviorProfileType.CASUAL,
+          profileType || BehaviorProfileType.CASUAL, 
           socialMediaService,
-          aiAgent
+          aiAgent,
+          this.accountRepository
         );
 
        const newSimulator = this.simulatorSet.addSimulator(simulationService);
@@ -92,6 +110,18 @@ export class SimulatorSetController {
         } catch (error) {
             console.error(error);
             res.status(500).json({ error: (error as Error).message });
+        }
+    }
+
+    removeSimulator = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const {simulatorId}=req.body;
+            const simulator = this.simulatorSet.getSimulator(simulatorId);
+            if(!simulator) throw new Error("Simulator not found");
+            this.simulatorSet.removeSimulator(simulator);
+            responseCreator(res,{status:200,message:"Simulador eliminado correctamente"});
+        } catch (error:any) {
+            responseCreator(res,{status:500,message:"Error al eliminar el simulador:"+error.message});
         }
     }
 }

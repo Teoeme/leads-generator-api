@@ -1,8 +1,9 @@
-import { ProxyAssignment, SocialMediaAccount } from '../../domain/entities/SocialMediaAccount';
+import { SocialMediaAccount } from '../../domain/entities/SocialMediaAccount';
 import { Lead } from '../../domain/entities/Lead';
 import { Post } from '../../domain/services/SocialMediaService';
 import { Page } from 'playwright';
 import { ProxyConfiguration } from '../../domain/entities/Proxy/ProxyConfiguration';
+import { MongoSocialMediaAccountRepository } from '../../infrastructure/repositories/mongodb/MongoSocialMediaAccountRepository';
 
 export interface UserProfile {
   id: string;
@@ -40,6 +41,10 @@ export abstract class SocialMediaService {
     return this._account;
   }
 
+  public setAccountSessionData(sessionData: any): void {
+    this._account.sessionData = sessionData;
+  }
+
 
   public getProxy(): ProxyConfiguration | null {
     return this._proxy;
@@ -64,8 +69,8 @@ export abstract class SocialMediaService {
   abstract likePost(postId: string): Promise<boolean>;
   abstract commentOnPost(postId: string, comment: string): Promise<boolean>;
   abstract searchUsers(query: string, limit?: number): Promise<UserProfile[]>;
-  abstract extractLeadsFromFollowers(username: string, limit?: number): Promise<Lead[]>;
-  abstract extractLeadsFromLikes(postId: string, limit?: number): Promise<Lead[]>;
+  abstract extractLeadsFromFollowers(username: string, limit?: number): Promise<Omit<Lead, 'campaignId'>[]>;
+  abstract extractLeadsFromLikes(postId: string, limit?: number): Promise<Omit<Lead, 'campaignId'>[]>;
   abstract getPost(postId: string): Promise<Post>;
   abstract getHashtagPosts(hashtag: string, limit?: number): Promise<Post[]>;
   abstract setLoggedIn(loggedIn: boolean): void;

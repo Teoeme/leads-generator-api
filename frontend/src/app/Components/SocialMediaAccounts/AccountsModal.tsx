@@ -26,7 +26,6 @@ res=            await createAccount(accountData)
         }else{
     res=        await updateAccount(accountData)
         }
-        console.log(res,'res')
         if(res?.ok){
             closeAndCleanModal()
         }
@@ -38,10 +37,7 @@ res=            await createAccount(accountData)
         {(formState:any,modalData:unknown,uid:string,title:string,type:'add' | 'edit'|'view',handleChange?:any)=>(
             <>
 <div className='flex justify-between items-center'>
-            <div className='flex items-center gap-2'>
-                <p>Tipo:</p>
-                <p className='font-bold uppercase'>{type}</p>
-            </div>
+           
 </div>
             <AccountForm type={type} formState={formState as AccountFormData} handleChange={handleChange} onSubmit={handleSubmit} onCancel={()=>{
                 closeAndCleanModal()

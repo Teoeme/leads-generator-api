@@ -7,4 +7,6 @@ export interface Simulator {
     isRunning: boolean;
     isLoggedIn: boolean;
     account:Account;
+    logs:{message:string,timestamp:string}[];
+    needAttention:boolean;
 }

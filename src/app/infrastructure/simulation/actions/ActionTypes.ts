@@ -30,7 +30,9 @@ export enum ActionType {
   // Acciones de simulación de comportamiento humano
   TAKE_BREAK = 'takeBreak',
   START_TYPING_THEN_DELETE = 'startTypingThenDelete',
-  VIEW_WITH_ENGAGEMENT = 'viewWithEngagement'
+  VIEW_WITH_ENGAGEMENT = 'viewWithEngagement',
+
+  MOCKED_ACTION = 'mockedAction'
 }
 
 export enum TimeDistribution {

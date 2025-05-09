@@ -10,6 +10,7 @@ const LeadSchema = new Schema<LeadDocument>(
     userId: { type: String, required: true, index: true },
     socialMediaType: { type: String, required: true },
     socialMediaId: { type: String, required: true },
+    campaignId: { type: String, required: false, ref: 'Campaign' },
     username: { type: String, required: true },
     fullName: { type: String },
     profileUrl: { type: String },
@@ -38,7 +39,8 @@ const LeadSchema = new Schema<LeadDocument>(
   { timestamps: true }
 );
 
-// Índice compuesto para evitar duplicados
-LeadSchema.index({ userId: 1, socialMediaType: 1, socialMediaId: 1 }, { unique: true });
+LeadSchema.index({campaignId: 1})
+LeadSchema.index({socialMediaType: 1})
+LeadSchema.index({status: 1})
 
 export const LeadModel = mongoose.model<LeadDocument>('Lead', LeadSchema); 

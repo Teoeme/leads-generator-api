@@ -1,7 +1,20 @@
 import { Campain, CampainStatus, InterventionStatus } from "../../domain/entities/Campain";
 import { CampainRepository } from "../../domain/repositories/CampainRepository";
 
+const CampaignStatusChangeMap:Record<CampainStatus,CampainStatus[]> = {
+    [CampainStatus.PLANNING]:[CampainStatus.RUNNING],
+    [CampainStatus.RUNNING]:[CampainStatus.PAUSED],
+    [CampainStatus.COMPLETED]:[],
+    [CampainStatus.PAUSED]:[CampainStatus.RUNNING,CampainStatus.PLANNING]
+}
 
+const InterventionStatusChangeMap:Record<InterventionStatus,InterventionStatus[]> = {
+    [InterventionStatus.PENDING]:[],
+    [InterventionStatus.RUNNING]:[],
+    [InterventionStatus.COMPLETED]:[InterventionStatus.PLANNING,InterventionStatus.PENDING],
+    [InterventionStatus.FAILED]:[InterventionStatus.PLANNING,InterventionStatus.PENDING],
+    [InterventionStatus.PLANNING]:[InterventionStatus.PENDING]
+}
 
 export class UpdateCampaignUsecase {
     constructor(private readonly campainRepository: CampainRepository) {}
@@ -31,15 +44,20 @@ export class UpdateCampaignUsecase {
                 const isRunning = existentIntervention.status === InterventionStatus.RUNNING
                 const isCompleted = existentIntervention.status === InterventionStatus.COMPLETED
                 
-                if(isBlocked || isRunning || isCompleted){
+                if(isBlocked || isRunning){
                     //No se puede actualizar una intervention que esta en estado running o completed y/o bloqueada
                     continue;
                 }else{
                     //Update intervention
                     oldInterventions[oldId] = intervention;
 
+                    //Validar si el cambio de estado se permite
+                    const statusChangeMap = InterventionStatusChangeMap[existentIntervention.status]
+                    if(statusChangeMap.includes(intervention.status)){
+                        oldInterventions[oldId].status = intervention.status;
+                    }
+                    
                     //Sanitizar datos no modificables
-                    oldInterventions[oldId].status = existentIntervention.status; //El estado no se puede modificar de forma manual
                     oldInterventions[oldId].isBlocked = existentIntervention.isBlocked; //El estado de bloqueo no se puede modificar de forma manual
                 }
             }
@@ -49,7 +67,7 @@ export class UpdateCampaignUsecase {
             //Create intervention
             oldInterventions.push({
                 ...intervention,
-                status: InterventionStatus.PENDING,
+                status: intervention.status===InterventionStatus.PENDING ? InterventionStatus.PENDING: InterventionStatus.PLANNING,
                 progress: 0,
                 isBlocked:false
             });
@@ -60,8 +78,12 @@ export class UpdateCampaignUsecase {
 
 
         campaign.interventions = oldInterventions;
-        //Sanitizar datos no modificables
-        campaign.status = campainDoc.status; //El estado no se puede modificar de forma manual
+
+        //Validar si el cambio de estado se permite
+        const statusChangeMap = CampaignStatusChangeMap[campainDoc.status]
+        if(campaign.status && statusChangeMap.includes(campaign.status)){
+            campaign.status = campaign.status;
+        }
 
 
         return this.campainRepository.updateCampain(campaign.id, campaign);

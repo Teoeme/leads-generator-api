@@ -14,6 +14,7 @@ export interface Lead {
   userId: string;
   socialMediaType: SocialMediaType;
   socialMediaId: string;
+  campaignId: string;
   username: string;
   fullName?: string;
   profileUrl: string;

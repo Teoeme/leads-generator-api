@@ -34,13 +34,14 @@ const {formState:interventionForm,handleChange}=useStateForm({
 })
 const onSubmit=async(data:Intervention,type: 'add' | 'edit')=>{
   let res
+  console.log(type,'type')
   if(type==='add'){
     res=await addIntervention(interventionForm.campaignId,data)
   }else if(type==='edit'){
     res=await updateIntervention(interventionForm.campaignId,data)
   }
   console.log(res,'res')
-  if(res.ok){
+  if(res?.ok){
     addToast({
       title:res?.message || 'Intervención creada',
       color:'success',
@@ -51,7 +52,7 @@ const onSubmit=async(data:Intervention,type: 'add' | 'edit')=>{
 
   return (
     <ModalTamplate uid='intervention-modal' size='5xl'>
-        {(data,uid,title,type)=>{
+        {(formState,data,uid,title,type)=>{
             return (
                 <InterventionForm data={interventionForm as Intervention} type={type as 'add' | 'edit'} handleChange={handleChange} onSubmit={onSubmit} />
             )
