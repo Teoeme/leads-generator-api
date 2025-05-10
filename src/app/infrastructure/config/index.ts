@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { StringValue } from 'ms';
+import { MongoUserRepository } from '../repositories/mongodb/MongoUserRepository';
 
 
 //Si estamos en desarrollo, usamos el archivo .env.development
@@ -8,6 +9,21 @@ if (process.env.NODE_ENV === 'development') {
 } else {
   dotenv.config();
 }
+
+const initializeData = async () => {
+  const userRepository = new MongoUserRepository();
+  const initialUsers=JSON.parse(process.env.INITIAL_USERS || '[]');
+
+  try {
+    for (const user of initialUsers) {
+      await userRepository.create(user);
+    }
+  } catch (error) {
+    console.log('Error initializing data:', error);
+  }
+}
+
+export {initializeData}
 
 export default {
   server: {

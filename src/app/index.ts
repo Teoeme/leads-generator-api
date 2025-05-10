@@ -3,8 +3,7 @@ import mongoose from 'mongoose';
 import passport from 'passport';
 import cors from 'cors';
 import helmet from 'helmet';
-import morgan from 'morgan';
-import config from './infrastructure/config';
+import config, { initializeData } from './infrastructure/config';
 import routes from './infrastructure/routes';
 import './infrastructure/auth/passport-config';
 
@@ -40,8 +39,9 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 // Database connection
 mongoose
   .connect(config.database.url,{dbName:'social-scrapper'})
-  .then(() => {
+  .then(async () => {
     console.log('Connected to MongoDB');
+    await initializeData();
     // Start server
     app.listen(config.server.port, () => {
       console.log(`Server running on port ${config.server.port}`);
