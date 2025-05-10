@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import { StringValue } from 'ms';
 import { MongoUserRepository } from '../repositories/mongodb/MongoUserRepository';
-
+import bcrypt from 'bcrypt';
 
 //Si estamos en desarrollo, usamos el archivo .env.development
 if (process.env.NODE_ENV === 'development') {
@@ -16,7 +16,10 @@ const initializeData = async () => {
 
   try {
     for (const user of initialUsers) {
-      await userRepository.create(user);
+       // Hash password
+       const salt = await bcrypt.genSalt(10);
+       const hashedPassword = await bcrypt.hash(user.password, salt);
+      await userRepository.create({...user, password: hashedPassword});
     }
   } catch (error) {
     console.log('Error initializing data:', error);
