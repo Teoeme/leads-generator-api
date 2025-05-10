@@ -368,6 +368,22 @@ export class LoggerService {
             return [];
         }
     }
+
+    public async deleteLogs(): Promise<void> {
+        const logFiles = [
+            path.join(LOG_DIR, 'error.log'),
+            path.join(LOG_DIR, 'combined.log'),
+            path.join(LOG_DIR, 'interventions.log')
+        ];
+
+        //limpiamos el contenido de los archivos
+        for (const logFile of logFiles) {
+            if (fs.existsSync(logFile)) {
+                fs.writeFileSync(logFile, '');
+            }
+        }
+    }
+
 }
 
 // Para usar en toda la aplicación

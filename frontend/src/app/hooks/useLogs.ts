@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { getCookie } from './useCookies';
 
 export interface Log {
   id: string;
@@ -84,6 +85,8 @@ const useLogs = (initialFilters: LogFilters = {}, initialPagination: LogsPaginat
   const [pollingInterval, setPollingInterval] = useState<number>(5000); // 5 segundos por defecto
   const [isPolling, setIsPolling] = useState<boolean>(false);
 
+  const token=getCookie('token');
+
   const buildQueryParams = useCallback(() => {
     const params: Record<string, string> = {
       page: pagination.page.toString(),
@@ -115,7 +118,7 @@ const useLogs = (initialFilters: LogFilters = {}, initialPagination: LogsPaginat
 
     try {
       const params = buildQueryParams();
-      const response = await axios.get<LogsResponse>(`${process.env.NEXT_PUBLIC_API_URL}/api/logs`, { params });
+      const response = await axios.get<LogsResponse>(`${process.env.NEXT_PUBLIC_API_URL}/api/logs`, { params, headers: { 'Authorization': `Bearer ${token}` } });
       
       setLogs(response.data.data);
       setTotalCount(response.data.metadata.pagination.total);
@@ -132,6 +135,17 @@ const useLogs = (initialFilters: LogFilters = {}, initialPagination: LogsPaginat
     }
   }, [buildQueryParams]);
 
+
+  const deleteLogs = async () => {
+    try {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/logs`, { headers: { 'Authorization': `Bearer ${token}` } });
+      fetchLogs();
+    } catch (err) {
+      console.error('Error deleting logs:', err);
+      setError('Error al eliminar los logs. Por favor, inténtalo de nuevo.');
+    }
+  };
+  
   // Fetch logs when filters or pagination change
   useEffect(() => {
     fetchLogs();
@@ -203,7 +217,8 @@ const useLogs = (initialFilters: LogFilters = {}, initialPagination: LogsPaginat
     previousPage,
     togglePolling,
     updatePollingInterval,
-    refresh
+    refresh,
+    deleteLogs
   };
 };
 

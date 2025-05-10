@@ -30,13 +30,15 @@ const dispatch= useDispatch();
       const data = await response.json();
       if (data?.token) {
         setCookie('token', data.token, {
-          httpOnly: process.env.NODE_ENV === 'production',
-          secure: process.env.NODE_ENV === 'production',
+          httpsOnly: true,
+          secure: true,
           sameSite: 'strict',
           expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           domain: process.env.NEXT_PUBLIC_DOMAIN,
         });
+        
         dispatch(setUser(data?.user));
+        dispatch(setIsAuthenticated(true));
         return true;
       } else {
         throw new Error('Error al iniciar sesión');
@@ -49,9 +51,12 @@ const dispatch= useDispatch();
 
   const logout = async () => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`, {
-        method: 'POST',
-      });
+      // await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`, {
+      //   method: 'POST',
+      // });
+      deleteCookie('token');
+      dispatch(setUser(null));
+      dispatch(setIsAuthenticated(false));
     } catch (error: unknown) {
       console.log('logout error', error);
     }

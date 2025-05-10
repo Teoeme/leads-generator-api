@@ -6,10 +6,12 @@ import CurrentUser from './CurrentUser'
 import useAuth from '@/app/hooks/useAuth'
 import { useModal } from '@/app/hooks/useModal'
 import LogsModal from '../Logs/LogsModal'
-
+import { useRouter } from 'next/navigation'
 const PrivateNavbar = () => {
 const {logout}=useAuth()
 const {open}=useModal({uid:'logs-modal',title:'Logs'})
+const router=useRouter()
+
   return (
     <div className='flex justify-between items-center p-2'>
       <ThemeSwitcher />
@@ -23,8 +25,11 @@ const {open}=useModal({uid:'logs-modal',title:'Logs'})
           Logs
         </Button>
         <CurrentUser />
-        <Button variant='light' onPress={logout}>
-          <Link href="/login">Salir</Link>
+        <Button variant='light' onPress={()=>{
+          logout()
+          router.push('/login')
+          }}>
+          <p>Salir</p>
         </Button>
       </div>
       <LogsModal />

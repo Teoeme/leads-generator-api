@@ -4,6 +4,7 @@ import useLogs, { LogFilters as LogFiltersType } from '../../hooks/useLogs';
 import LogRow from './LogRow';
 import LogFiltersComponent from './LogFilters';
 import { Button, Spinner, Card, CardBody, Badge, Pagination } from '@heroui/react';
+import { confirm } from '@/app/services/confirmService';
 
 const LogsModal = () => {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -21,7 +22,8 @@ const LogsModal = () => {
     previousPage,
     refresh,
     isPolling,
-    togglePolling
+    togglePolling,
+    deleteLogs
   } = useLogs();
 
   const handleRefresh = () => {
@@ -31,6 +33,18 @@ const LogsModal = () => {
 
   const handleUpdateFilters = (newFilters: Partial<LogFiltersType>) => {
     updateFilters(newFilters);
+  };
+
+  const handleDeleteLogs = () => {
+    confirm({
+      title: 'Eliminar logs',
+      content: '¿Estás seguro de querer eliminar los logs?',
+    }).then(async () => {
+await deleteLogs()
+    })
+    .catch(() => {
+      console.log('Cancelado');
+    });
   };
 
   return (
@@ -71,10 +85,14 @@ const LogsModal = () => {
             </Button>
             
             {totalCount > 0 && (
-              <Badge content={totalCount} color="primary" variant="flat" className="ml-auto">
+              <Badge content={totalCount} color="primary" variant="flat" className="">
                 <span className="ml-2 ">logs encontrados</span>
               </Badge>
             )}
+            <div className='flex-1 flex justify-end'>
+
+             <Button size="sm" variant="solid" color="danger" onPress={handleDeleteLogs}>Eliminar logs</Button>
+            </div>
           </div>
           
           {/* Mensaje de carga o error */}

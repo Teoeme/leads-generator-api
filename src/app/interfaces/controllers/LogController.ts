@@ -327,4 +327,12 @@ export class LogController {
             });
         }
     }
+
+    /**
+     * Elimina todos los logs
+     */
+    async deleteLogs(req: Request, res: Response): Promise<void> {
+        await this.loggerService.deleteLogs();
+        res.status(200).json({ success: true });
+    }
 } 
